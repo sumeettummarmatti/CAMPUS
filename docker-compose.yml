@@ -1,0 +1,64 @@
+version: '3.8'
+
+services:
+  # 1. User Service Database
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: campus-postgres-user
+    environment:
+      POSTGRES_USER: campus
+      POSTGRES_PASSWORD: campus_secret
+      POSTGRES_DB: campus_users
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # 2. Auction Service Database
+  postgres-auction:
+    image: postgres:15-alpine
+    container_name: campus-postgres-auction
+    environment:
+      POSTGRES_USER: campus
+      POSTGRES_PASSWORD: campus_secret
+      POSTGRES_DB: campus_auctions
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_auction_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # 3. Bidding Service Database
+  postgres-bidding:
+    image: postgres:15-alpine
+    container_name: campus-postgres-bidding
+    environment:
+      POSTGRES_USER: campus
+      POSTGRES_PASSWORD: campus_secret
+      POSTGRES_DB: campus_bids
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_bidding_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # 4. Payment Service Database
+  postgres-payment:
+    image: postgres:15-alpine
+    container_name: campus-postgres-payment
+    environment:
+      POSTGRES_USER: campus
+      POSTGRES_PASSWORD: campus_secret
+      POSTGRES_DB: campus_payments
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_payment_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_user_data:
+  postgres_auction_data:
+  postgres_bidding_data:
+  postgres_payment_data:
