@@ -1,0 +1,51 @@
+@startuml payment-state
+title Payment & Transaction State Diagram
+
+[*] --> PENDING_PAYMENT : Auction winner\ndetermined\n/ payment email sent
+
+PENDING_PAYMENT --> PAYMENT_PROCESSING : Buyer initiates\npayment via gateway
+
+PAYMENT_PROCESSING --> PAYMENT_FAILED : Gateway returns\nfailure / timeout
+
+PAYMENT_FAILED --> PAYMENT_PROCESSING : Buyer retries\npayment
+
+PAYMENT_FAILED --> CANCELLED : Max retries\nexceeded or\nbuyer abandons
+
+PAYMENT_PROCESSING --> IN_ESCROW : Gateway confirms\npayment success\n/ funds held
+
+IN_ESCROW --> SHIPPED : Seller marks\nitem as shipped\n+ tracking info
+
+SHIPPED --> DELIVERY_CONFIRMED : Buyer clicks\n"Confirm Delivery"\nwithin 7 days
+
+SHIPPED --> DELIVERY_CONFIRMED : 7-day window\nexpires\n(auto-confirm)
+
+DELIVERY_CONFIRMED --> COMPLETED : Funds released\nto seller\n/ receipt generated
+
+IN_ESCROW --> DISPUTED : Buyer raises\ndispute before\ndelivery confirmed
+
+SHIPPED --> DISPUTED : Buyer raises\ndispute (item\nnot received /\nnot as described)
+
+DISPUTED --> REFUNDED : Admin rules\nin buyer's favour\n/ partial or\nfull refund issued
+
+DISPUTED --> COMPLETED : Admin rules\nin seller's favour\n/ funds released
+
+REFUNDED --> [*] : Refund processed,\nrecord archived
+
+COMPLETED --> [*] : Transaction closed,\nparties prompted\nto leave reviews
+
+CANCELLED --> [*] : Transaction\narchived
+
+note right of IN_ESCROW
+  Funds held by platform.
+  Neither buyer nor seller
+  can access until state
+  transitions out of escrow.
+end note
+
+note right of DISPUTED
+  Escrow release frozen.
+  Admin arbitrates with
+  evidence from both parties.
+end note
+
+@enduml

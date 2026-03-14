@@ -1,0 +1,82 @@
+@startuml bidding-flow
+title Real-Time Bidding Activity
+
+|Buyer|
+start
+:Open active auction page;
+
+|Bidding Service|
+:Establish WebSocket connection\nfor this auction;
+:Subscribe buyer to auction channel;
+:Send current highest bid snapshot;
+
+|Buyer|
+:View live auction state\n(current bid, time remaining,\nbid history);
+:Enter bid amount;
+:Submit bid;
+
+|Bidding Service|
+:Receive bid request;
+
+fork
+  note: Concurrent bid\nconflict window
+  :Acquire optimistic lock\non auction row;
+fork again
+  :Another buyer submits\nbid simultaneously;
+end fork
+
+:Resolve concurrent bids\n(database-level locking,\nhighest bid wins);
+
+:Validate bid amount;
+if (Bid > current highest + min increment?) then (yes)
+  if (Auction still ACTIVE?) then (yes)
+    if (Buyer is not current leader?) then (yes)
+      :Persist new Bid entity;
+      :Update auction.currentHighestBid;
+
+      fork
+        :Broadcast updated bid\nto all WebSocket subscribers\n(current highest, bidder alias);
+      fork again
+        :Send outbid email\nto previous highest bidder;
+      fork again
+        :Send bid confirmation\nto current bidder;
+      end fork
+
+      |Buyer|
+      :See live bid update\non auction page;
+
+    else (no — already leading)
+      :Return error: You are\nalready the highest bidder;
+      |Buyer|
+      :Display error message;
+    endif
+  else (no)
+    :Return error: Auction has ended;
+    |Buyer|
+    :Display auction closed message;
+    stop
+  endif
+else (no)
+  :Return error: Bid too low\n(show minimum required);
+  |Buyer|
+  :Adjust bid amount;
+  :Resubmit;
+endif
+
+|Bidding Service|
+:Check anti-snipe rule\n(bid in last 30 seconds?);
+if (Yes) then (yes)
+  :Signal Auction Service\nto extend by 2 minutes;
+  :Broadcast extension notice\nto all subscribers;
+endif
+
+:Auction end time reached;
+:Determine winner\n(highest valid bid);
+:Broadcast auction-closed event;
+:Notify Auction Service\nof final winner and amount;
+
+|Buyer|
+:Receive win / loss notification;
+stop
+
+@enduml

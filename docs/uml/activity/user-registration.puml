@@ -1,0 +1,77 @@
+@startuml user-registration
+title User Registration & Login Activity
+
+|User|
+start
+:Open CAMP-us application;
+:Choose action (Register / Login);
+
+if (New user?) then (Register)
+  :Fill registration form\n(name, email, password, role);
+  :Submit form;
+  |User Service|
+  :Validate input fields;
+  if (Validation passes?) then (yes)
+    :Check if email already exists;
+    if (Email unique?) then (yes)
+      :Hash password (BCrypt);
+      :Create User entity\nwith role BUYER/SELLER;
+      :Persist to database;
+      if (Role is SELLER?) then (yes)
+        :Trigger seller\nverification workflow;
+        |Admin|
+        :Review seller documents;
+        if (Verified?) then (yes)
+          :Set SELLER_VERIFIED status;
+        else (no)
+          :Reject with reason;
+          |User|
+          :Receive rejection email;
+          stop
+        endif
+      endif
+      |User|
+      :Receive confirmation email;
+    else (no)
+      :Return error: Email already registered;
+      |User|
+      :Display error message;
+      stop
+    endif
+  else (no)
+    :Return validation errors;
+    |User|
+    :Display field errors;
+    stop
+  endif
+
+else (Login)
+  :Enter email and password;
+  :Submit credentials;
+  |User Service|
+  :Look up user by email;
+  if (User found?) then (yes)
+    :Verify BCrypt password;
+    if (Password matches?) then (yes)
+      :Generate JWT token\n(access + refresh);
+      :Return token to client;
+    else (no)
+      :Return 401 Unauthorized;
+      |User|
+      :Display invalid credentials;
+      stop
+    endif
+  else (no)
+    :Return 401 Unauthorized;
+    |User|
+    :Display invalid credentials;
+    stop
+  endif
+endif
+
+|User|
+:Store JWT in session;
+:Redirect to dashboard;
+stop
+
+@enduml

@@ -1,0 +1,45 @@
+@startuml auction-state
+title Auction State Diagram
+
+[*] --> DRAFT : Seller begins\ncreating auction
+
+DRAFT --> SCHEDULED : Seller submits\nvalid auction form
+
+DRAFT --> [*] : Seller discards draft
+
+SCHEDULED --> ACTIVE : Scheduled start\ntime arrives\n(Quartz job fires)
+
+SCHEDULED --> CANCELLED : Seller cancels\nbefore start\n[no bids exist]
+
+ACTIVE --> ACTIVE : Bid placed in\nlast 30 seconds\n/ extend by 2 min\n(anti-snipe)
+
+ACTIVE --> ENDED : Scheduled end\ntime arrives
+
+ACTIVE --> CANCELLED : Admin intervention\n(policy violation)
+
+ENDED --> SOLD : Highest bid\n>= reserve price\n/ select winner,\ntrigger payment
+
+ENDED --> CLOSED_NO_SALE : No bids OR\nhighest bid\n< reserve price\n/ notify seller
+
+SOLD --> [*] : Transaction\ncompleted
+
+CLOSED_NO_SALE --> RELISTED : Seller chooses\nto relist item
+
+RELISTED --> SCHEDULED : New auction\ncreated for same item
+
+CANCELLED --> [*] : Auction archived
+
+note right of ACTIVE
+  Anti-snipe rule:
+  any bid in last 30s
+  extends end time by 2 min.
+  Extensions are unlimited.
+end note
+
+note right of SOLD
+  Payment Service takes over.
+  Auction record is archived
+  after transaction closes.
+end note
+
+@enduml

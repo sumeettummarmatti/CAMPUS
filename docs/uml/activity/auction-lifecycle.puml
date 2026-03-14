@@ -1,0 +1,82 @@
+@startuml auction-lifecycle
+title Auction Creation & Lifecycle Activity
+
+|Seller|
+start
+:Navigate to Create Auction;
+:Fill auction details\n(title, description, images,\ncategory, start price,\nreserve price, start/end time);
+:Submit auction form;
+
+|Auction Service|
+:Validate auction fields;
+if (Valid?) then (yes)
+  :Check seller is verified;
+  if (Seller verified?) then (yes)
+    :Create Auction entity\nwith status SCHEDULED;
+    :Persist auction to DB;
+    :Schedule start job\n(Quartz Scheduler);
+    |Seller|
+    :Receive confirmation\nwith auction ID;
+  else (no)
+    :Return 403 Forbidden;
+    |Seller|
+    :Prompted to complete\nseller verification;
+    stop
+  endif
+else (no)
+  :Return validation errors;
+  |Seller|
+  :Fix and resubmit;
+  stop
+endif
+
+|Auction Service|
+:Scheduled start time arrives;
+:Update status → ACTIVE;
+:Notify relevant buyers\nvia email;
+
+|Buyer|
+:Browse / search auctions;
+:View auction details;
+
+fork
+  |Buyer|
+  :Place bid on auction;
+  note right: Handled by\nBidding Service
+fork again
+  |Seller|
+  :Edit auction\n(if no bids yet);
+  |Auction Service|
+  :Update auction details;
+  :Persist changes;
+end fork
+
+|Auction Service|
+:Monitor auction end time;
+
+if (Bid placed in last 30s?) then (yes)
+  :Extend auction by 2 minutes\n(anti-snipe protection);
+  :Notify all bidders of extension;
+  :Restart end-time monitor;
+endif
+
+:Scheduled end time arrives;
+:Update status → ENDED;
+:Retrieve highest bid;
+
+if (Highest bid >= reserve price?) then (yes)
+  :Select winner;
+  :Notify winner via email;
+  :Notify losing bidders;
+  :Trigger payment workflow;
+  note right: Handled by\nPayment Service
+else (no)
+  :No winner — reserve not met;
+  :Notify seller;
+  :Update status → CLOSED_NO_SALE;
+endif
+
+:Archive auction record;
+stop
+
+@enduml

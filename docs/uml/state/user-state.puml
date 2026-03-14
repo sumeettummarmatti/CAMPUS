@@ -1,0 +1,54 @@
+@startuml user-state
+title User Account State Diagram
+
+[*] --> REGISTERED : User completes\nregistration form\n/ email sent
+
+REGISTERED --> ACTIVE_BUYER : Email verified\n/ role = BUYER
+
+REGISTERED --> PENDING_VERIFICATION : Email verified\n/ role = SELLER
+
+PENDING_VERIFICATION --> ACTIVE_SELLER : Admin approves\nseller verification\n/ documents valid
+
+PENDING_VERIFICATION --> VERIFICATION_REJECTED : Admin rejects\nverification\n/ reason provided
+
+VERIFICATION_REJECTED --> PENDING_VERIFICATION : Seller resubmits\nupdated documents
+
+ACTIVE_BUYER --> ACTIVE_SELLER : Buyer requests\nseller upgrade\n/ submits documents
+
+ACTIVE_SELLER --> ACTIVE_BUYER : Seller downgrades\nor loses seller status
+
+ACTIVE_BUYER --> SUSPENDED : Admin suspends\naccount\n(policy violation)
+
+ACTIVE_SELLER --> SUSPENDED : Admin suspends\naccount\n(policy violation /\nnegative reviews)
+
+SUSPENDED --> ACTIVE_BUYER : Admin reinstates\nbuyer account
+
+SUSPENDED --> ACTIVE_SELLER : Admin reinstates\nseller account
+
+SUSPENDED --> BANNED : Repeated\nviolations\n/ admin bans
+
+ACTIVE_BUYER --> DEACTIVATED : User requests\naccount deletion
+
+ACTIVE_SELLER --> DEACTIVATED : User requests\naccount deletion\n[no open auctions]
+
+DEACTIVATED --> ACTIVE_BUYER : User reactivates\nwithin grace period
+
+BANNED --> [*] : Account permanently\nremoved
+
+DEACTIVATED --> [*] : Grace period\nexpires, data\npurged
+
+note right of PENDING_VERIFICATION
+  Seller must submit:
+  - Student ID
+  - Hostel room proof
+  Admin reviews within 48h.
+end note
+
+note right of SUSPENDED
+  Suspended users cannot
+  bid, create auctions,
+  or make payments.
+  Existing escrow frozen.
+end note
+
+@enduml

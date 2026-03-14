@@ -1,0 +1,42 @@
+@startuml bid-state
+title Bid State Diagram
+
+[*] --> PENDING : Buyer submits\nbid amount
+
+PENDING --> VALIDATING : Bidding Service\nreceives bid request
+
+VALIDATING --> REJECTED : Bid amount <\nminimum increment\nOR auction not ACTIVE\nOR buyer already leading
+
+VALIDATING --> CONFLICT_RESOLUTION : Concurrent bid\ndetected on same\nauction row
+
+CONFLICT_RESOLUTION --> ACCEPTED : This bid wins\nconcurrency check\n(highest amount)
+
+CONFLICT_RESOLUTION --> REJECTED : Another bid\nwon concurrency\ncheck
+
+VALIDATING --> ACCEPTED : Bid is valid,\nno conflict
+
+ACCEPTED --> LEADING : Bid persisted,\nauction.currentHighestBid\nupdated\n/ WebSocket broadcast
+
+LEADING --> OUTBID : A higher bid\nis accepted for\nsame auction\n/ send outbid email
+
+LEADING --> WON : Auction ends,\nthis bid is\nhighest\n/ notify winner
+
+LEADING --> LOST : Auction ends,\nreserve not met\n/ notify bidder
+
+OUTBID --> LEADING : Same buyer bids\nagain and leads
+
+OUTBID --> LOST : Auction ends,\nbuyer did not\nretake lead
+
+WON --> [*] : Payment initiated\nfor this bid
+
+LOST --> [*] : Bid archived
+
+REJECTED --> [*] : Rejection logged,\nbuyer notified
+
+note right of CONFLICT_RESOLUTION
+  Optimistic locking used.
+  Database row version
+  checked before commit.
+end note
+
+@enduml

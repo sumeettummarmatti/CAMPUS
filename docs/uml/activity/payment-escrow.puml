@@ -1,0 +1,88 @@
+@startuml payment-escrow
+title Payment & Escrow Activity
+
+|Payment Service|
+start
+:Receive auction winner event\n(auctionId, winnerId, amount);
+:Create Transaction record\nwith status PENDING_PAYMENT;
+:Send payment request\nemail to winner;
+
+|Buyer (Winner)|
+:Receive payment notification;
+:Open payment page;
+:Select payment method\n(UPI / card / netbanking);
+:Submit payment;
+
+|Payment Gateway|
+:Process payment;
+if (Payment successful?) then (yes)
+  :Return success + transaction ref;
+else (no)
+  :Return failure reason;
+  |Payment Service|
+  :Update Transaction → PAYMENT_FAILED;
+  |Buyer (Winner)|
+  :Display failure, retry option;
+  stop
+endif
+
+|Payment Service|
+:Verify payment with gateway\n(idempotency check);
+:Update Transaction → IN_ESCROW;
+:Hold funds in escrow account;
+:Notify seller of confirmed payment;
+:Notify buyer: funds held in escrow;
+
+|Seller|
+:Prepare and dispatch item;
+:Mark item as SHIPPED\nin platform;
+:Provide tracking info;
+
+|Buyer (Winner)|
+:Receive item;
+
+if (Buyer confirms delivery\nwithin 7 days?) then (yes)
+  :Click "Confirm Delivery";
+  |Payment Service|
+  :Update Transaction → DELIVERY_CONFIRMED;
+  :Release funds from escrow to seller;
+  :Update Transaction → COMPLETED;
+  :Generate receipt PDF;
+  :Notify seller of fund release;
+
+else (7-day window expires)
+  |Payment Service|
+  :Auto-release funds to seller\n(7-day auto-confirm);
+  :Update Transaction → COMPLETED;
+  :Notify both parties;
+endif
+
+|Buyer (Winner)|
+:Option to raise dispute?;
+if (Dispute raised?) then (yes)
+  :Submit dispute with reason;
+  |Payment Service|
+  :Update Transaction → DISPUTED;
+  :Freeze escrow release;
+
+  |Admin|
+  :Review dispute evidence;
+  if (Ruling?) then (Buyer wins)
+    :Issue full / partial refund;
+    |Payment Service|
+    :Process refund to buyer;
+    :Update Transaction → REFUNDED;
+  else (Seller wins)
+    :Release funds to seller;
+    |Payment Service|
+    :Update Transaction → COMPLETED;
+  endif
+endif
+
+|Buyer (Winner)|
+:Rate and review seller;
+|Seller|
+:Rate and review buyer;
+stop
+
+@enduml
