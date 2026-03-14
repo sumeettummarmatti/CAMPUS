@@ -1,0 +1,45 @@
+# ══════════════════════════════════════════════════════════════
+#  CAMPUS – Project Requirements & Dependencies
+# ══════════════════════════════════════════════════════════════
+
+# ─── Runtime ──────────────────────────────────────────────────
+Java 17 (JDK 17+)
+Apache Maven 3.9+
+PostgreSQL 16
+Docker & Docker Compose (optional, for local DB setup)
+
+# ─── Backend (Spring Boot 3.2.x) ─────────────────────────────
+spring-boot-starter-web            # REST APIs (all services)
+spring-boot-starter-data-jpa       # JPA / Hibernate ORM
+spring-boot-starter-security       # Authentication & authorization (user-service)
+spring-boot-starter-validation     # Request DTO validation
+spring-boot-starter-websocket      # Real-time bidding (bidding-service)
+spring-boot-starter-mail           # Email notifications (optional)
+spring-boot-starter-test           # JUnit 5, Mockito, MockMvc
+
+# JWT
+jjwt-api        0.12.5
+jjwt-impl       0.12.5
+jjwt-jackson    0.12.5
+
+# Database
+postgresql                         # PostgreSQL JDBC driver
+h2                                 # In-memory DB for tests
+
+# Utilities
+lombok                             # Boilerplate reduction (@Data, @Builder, etc.)
+mapstruct                          # DTO ↔ Entity mapping (optional)
+
+# ─── Frontend (JavaFX 21) ────────────────────────────────────
+javafx-controls  21.0.2
+javafx-fxml      21.0.2
+javafx-graphics  21.0.2
+
+# ─── Build Plugins ───────────────────────────────────────────
+maven-compiler-plugin              # Java 17 compilation
+spring-boot-maven-plugin           # Fat JAR packaging
+javafx-maven-plugin                # JavaFX application packaging
+
+# ─── Dev Tools (optional) ────────────────────────────────────
+spring-boot-devtools               # Hot reload during development
+springdoc-openapi-starter-webmvc-ui # Swagger UI for API docs
