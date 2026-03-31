@@ -1,0 +1,113 @@
+package com.campus.payment.service;
+
+import com.campus.payment.dto.PaymentDTO;
+import com.campus.payment.model.DisputeStatus;
+import com.campus.payment.model.Transaction;
+import com.campus.payment.model.TransactionStatus;
+import com.campus.payment.repository.TransactionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+
+/**
+ * Manages the dispute lifecycle for in-escrow transactions.
+ * Flow: IN_ESCROW → (open) → DISPUTED[OPEN] → (review) → DISPUTED[UNDER_REVIEW]
+ *        → (resolve buyer) → REFUNDED  OR  (resolve seller) → COMPLETED
+ */
+@Service
+@RequiredArgsConstructor
+public class DisputeService {
+
+    private final TransactionRepository transactionRepository;
+    private final PaymentGatewayService paymentGatewayService;
+    private final EscrowService escrowService;
+
+    /**
+     * Open a dispute on an in-escrow transaction.
+     * Transitions: IN_ESCROW → DISPUTED, dispute status → OPEN.
+     */
+    @Transactional
+    public PaymentDTO openDispute(Long transactionId, String reason) {
+        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+
+        if (tx.getStatus() != TransactionStatus.IN_ESCROW) {
+            throw new IllegalStateException(
+                    "Disputes can only be opened for IN_ESCROW transactions. Current: " + tx.getStatus());
+        }
+
+        tx.setStatus(TransactionStatus.DISPUTED);
+        tx.setDisputeStatus(DisputeStatus.OPEN);
+        tx.setDisputeReason(reason);
+        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+    }
+
+    /**
+     * Place a dispute under admin review — dispute status: OPEN → UNDER_REVIEW.
+     */
+    @Transactional
+    public PaymentDTO reviewDispute(Long transactionId) {
+        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+
+        if (tx.getDisputeStatus() != DisputeStatus.OPEN) {
+            throw new IllegalStateException("Only OPEN disputes can be placed under review");
+        }
+
+        tx.setDisputeStatus(DisputeStatus.UNDER_REVIEW);
+        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+    }
+
+    /**
+     * Resolve dispute in buyer's favour — refunds the buyer.
+     */
+    @Transactional
+    public PaymentDTO resolveDisputeBuyer(Long transactionId) {
+        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        requireUnderReview(tx);
+
+        tx.setDisputeStatus(DisputeStatus.RESOLVED_BUYER);
+        transactionRepository.save(tx);
+        return escrowService.refundFunds(transactionId);
+    }
+
+    /**
+     * Resolve dispute in seller's favour — releases funds to seller.
+     * Handles the release directly to avoid intermediate state visibility.
+     */
+    @Transactional
+    public PaymentDTO resolveDisputeSeller(Long transactionId) {
+        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        requireUnderReview(tx);
+
+        tx.setDisputeStatus(DisputeStatus.RESOLVED_SELLER);
+        tx.setStatus(TransactionStatus.COMPLETED);
+        tx.setReleasedAt(LocalDateTime.now());
+        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+    }
+
+    /**
+     * Close a dispute without further action (e.g. withdrawn by buyer).
+     * Transaction returns to IN_ESCROW; dispute status → CLOSED.
+     */
+    @Transactional
+    public PaymentDTO closeDispute(Long transactionId) {
+        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+
+        if (tx.getDisputeStatus() == null || tx.getDisputeStatus() == DisputeStatus.CLOSED) {
+            throw new IllegalStateException("No active dispute to close on transaction: " + transactionId);
+        }
+
+        tx.setDisputeStatus(DisputeStatus.CLOSED);
+        tx.setStatus(TransactionStatus.IN_ESCROW);
+        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+    }
+
+    // ── private helper ──────────────────────────────────────────────────────
+
+    private void requireUnderReview(Transaction tx) {
+        if (tx.getDisputeStatus() != DisputeStatus.UNDER_REVIEW) {
+            throw new IllegalStateException("Dispute must be UNDER_REVIEW to resolve");
+        }
+    }
+}
