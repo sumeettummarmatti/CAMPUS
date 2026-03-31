@@ -54,7 +54,8 @@ public class PaymentGatewayService {
     }
 
     /**
-     * Confirm a payment — moves it from PENDING → IN_ESCROW.
+     * Confirm a payment — moves it from PENDING → PAYMENT_PROCESSING.
+     * Call EscrowService#holdFunds once the gateway confirms success.
      */
     @Transactional
     public PaymentDTO confirmPayment(Long transactionId) {
@@ -65,20 +66,54 @@ public class PaymentGatewayService {
                     "Cannot confirm a transaction that is not PENDING. Current status: " + tx.getStatus());
         }
 
-        tx.setStatus(TransactionStatus.IN_ESCROW);
+        tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
         return toDTO(transactionRepository.save(tx));
     }
 
     /**
-     * Cancel a PENDING payment.
+     * Record a gateway failure — moves PAYMENT_PROCESSING → PAYMENT_FAILED.
+     * The buyer may retry via retryPayment or abandon via cancelPayment.
+     */
+    @Transactional
+    public PaymentDTO markPaymentFailed(Long transactionId) {
+        Transaction tx = findOrThrow(transactionId);
+
+        if (tx.getStatus() != TransactionStatus.PAYMENT_PROCESSING) {
+            throw new IllegalStateException(
+                    "Only PAYMENT_PROCESSING transactions can be marked failed. Current status: " + tx.getStatus());
+        }
+
+        tx.setStatus(TransactionStatus.PAYMENT_FAILED);
+        return toDTO(transactionRepository.save(tx));
+    }
+
+    /**
+     * Retry a failed payment — moves PAYMENT_FAILED → PAYMENT_PROCESSING.
+     */
+    @Transactional
+    public PaymentDTO retryPayment(Long transactionId) {
+        Transaction tx = findOrThrow(transactionId);
+
+        if (tx.getStatus() != TransactionStatus.PAYMENT_FAILED) {
+            throw new IllegalStateException(
+                    "Only PAYMENT_FAILED transactions can be retried. Current status: " + tx.getStatus());
+        }
+
+        tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
+        return toDTO(transactionRepository.save(tx));
+    }
+
+    /**
+     * Cancel a PENDING or PAYMENT_FAILED payment.
      */
     @Transactional
     public PaymentDTO cancelPayment(Long transactionId) {
         Transaction tx = findOrThrow(transactionId);
 
-        if (tx.getStatus() != TransactionStatus.PENDING) {
+        if (tx.getStatus() != TransactionStatus.PENDING
+                && tx.getStatus() != TransactionStatus.PAYMENT_FAILED) {
             throw new IllegalStateException(
-                    "Only PENDING payments can be cancelled. Current status: " + tx.getStatus());
+                    "Only PENDING or PAYMENT_FAILED payments can be cancelled. Current status: " + tx.getStatus());
         }
 
         tx.setStatus(TransactionStatus.CANCELLED);
@@ -134,6 +169,7 @@ public class PaymentGatewayService {
                 .paymentMethod(tx.getPaymentMethod())
                 .disputeStatus(tx.getDisputeStatus())
                 .disputeReason(tx.getDisputeReason())
+                .preDisputeStatus(tx.getPreDisputeStatus())
                 .createdAt(tx.getCreatedAt())
                 .updatedAt(tx.getUpdatedAt())
                 .releasedAt(tx.getReleasedAt())

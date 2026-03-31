@@ -31,7 +31,7 @@ public class PaymentController {
     }
 
     /**
-     * POST /api/payments/{id}/confirm — confirm payment, moves PENDING → IN_ESCROW.
+     * POST /api/payments/{id}/confirm — submit payment to gateway, moves PENDING → PAYMENT_PROCESSING.
      */
     @PostMapping("/{id}/confirm")
     public ResponseEntity<PaymentDTO> confirm(@PathVariable Long id) {
@@ -39,7 +39,23 @@ public class PaymentController {
     }
 
     /**
-     * POST /api/payments/{id}/cancel — cancel a PENDING payment.
+     * POST /api/payments/{id}/payment-failed — record a gateway failure, moves PAYMENT_PROCESSING → PAYMENT_FAILED.
+     */
+    @PostMapping("/{id}/payment-failed")
+    public ResponseEntity<PaymentDTO> paymentFailed(@PathVariable Long id) {
+        return ResponseEntity.ok(paymentGatewayService.markPaymentFailed(id));
+    }
+
+    /**
+     * POST /api/payments/{id}/retry — retry a failed payment, moves PAYMENT_FAILED → PAYMENT_PROCESSING.
+     */
+    @PostMapping("/{id}/retry")
+    public ResponseEntity<PaymentDTO> retry(@PathVariable Long id) {
+        return ResponseEntity.ok(paymentGatewayService.retryPayment(id));
+    }
+
+    /**
+     * POST /api/payments/{id}/cancel — cancel a PENDING or PAYMENT_FAILED payment.
      */
     @PostMapping("/{id}/cancel")
     public ResponseEntity<PaymentDTO> cancel(@PathVariable Long id) {
@@ -78,10 +94,8 @@ public class PaymentController {
         return ResponseEntity.ok(paymentGatewayService.getTransactionsBySeller(sellerId));
     }
 
-    // ── Escrow endpoints ────────────────────────────────────────────────────
-
     /**
-     * POST /api/payments/{id}/escrow/hold — hold funds in escrow (PENDING → IN_ESCROW).
+     * POST /api/payments/{id}/escrow/hold — gateway confirmed success; hold funds (PAYMENT_PROCESSING → IN_ESCROW).
      */
     @PostMapping("/{id}/escrow/hold")
     public ResponseEntity<PaymentDTO> hold(@PathVariable Long id) {
@@ -89,7 +103,23 @@ public class PaymentController {
     }
 
     /**
-     * POST /api/payments/{id}/escrow/release — release escrowed funds to seller.
+     * POST /api/payments/{id}/escrow/ship — seller marks item as dispatched (IN_ESCROW → SHIPPED).
+     */
+    @PostMapping("/{id}/escrow/ship")
+    public ResponseEntity<PaymentDTO> ship(@PathVariable Long id) {
+        return ResponseEntity.ok(escrowService.markShipped(id));
+    }
+
+    /**
+     * POST /api/payments/{id}/escrow/confirm-delivery — buyer confirms receipt (SHIPPED → DELIVERY_CONFIRMED).
+     */
+    @PostMapping("/{id}/escrow/confirm-delivery")
+    public ResponseEntity<PaymentDTO> confirmDelivery(@PathVariable Long id) {
+        return ResponseEntity.ok(escrowService.confirmDelivery(id));
+    }
+
+    /**
+     * POST /api/payments/{id}/escrow/release — release escrowed funds to seller (DELIVERY_CONFIRMED → COMPLETED).
      */
     @PostMapping("/{id}/escrow/release")
     public ResponseEntity<PaymentDTO> release(@PathVariable Long id) {

@@ -26,6 +26,7 @@ public class PaymentDTO {
     private PaymentMethod paymentMethod;
     private DisputeStatus disputeStatus;
     private String disputeReason;
+    private TransactionStatus preDisputeStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime releasedAt;

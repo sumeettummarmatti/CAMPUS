@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 
 /**
  * Manages the dispute lifecycle for in-escrow transactions.
- * Flow: IN_ESCROW → (open) → DISPUTED[OPEN] → (review) → DISPUTED[UNDER_REVIEW]
+ * Flow: IN_ESCROW or SHIPPED → (open) → DISPUTED[OPEN] → (review) → DISPUTED[UNDER_REVIEW]
  *        → (resolve buyer) → REFUNDED  OR  (resolve seller) → COMPLETED
  */
 @Service
@@ -25,18 +25,20 @@ public class DisputeService {
     private final EscrowService escrowService;
 
     /**
-     * Open a dispute on an in-escrow transaction.
-     * Transitions: IN_ESCROW → DISPUTED, dispute status → OPEN.
+     * Open a dispute on an in-escrow or shipped transaction.
+     * Transitions: IN_ESCROW or SHIPPED → DISPUTED, dispute status → OPEN.
      */
     @Transactional
     public PaymentDTO openDispute(Long transactionId, String reason) {
         Transaction tx = paymentGatewayService.findOrThrow(transactionId);
 
-        if (tx.getStatus() != TransactionStatus.IN_ESCROW) {
+        if (tx.getStatus() != TransactionStatus.IN_ESCROW
+                && tx.getStatus() != TransactionStatus.SHIPPED) {
             throw new IllegalStateException(
-                    "Disputes can only be opened for IN_ESCROW transactions. Current: " + tx.getStatus());
+                    "Disputes can only be opened for IN_ESCROW or SHIPPED transactions. Current: " + tx.getStatus());
         }
 
+        tx.setPreDisputeStatus(tx.getStatus());
         tx.setStatus(TransactionStatus.DISPUTED);
         tx.setDisputeStatus(DisputeStatus.OPEN);
         tx.setDisputeReason(reason);
@@ -88,7 +90,8 @@ public class DisputeService {
 
     /**
      * Close a dispute without further action (e.g. withdrawn by buyer).
-     * Transaction returns to IN_ESCROW; dispute status → CLOSED.
+     * Transaction is restored to the status it held before the dispute was opened;
+     * dispute status → CLOSED.
      */
     @Transactional
     public PaymentDTO closeDispute(Long transactionId) {
@@ -98,8 +101,13 @@ public class DisputeService {
             throw new IllegalStateException("No active dispute to close on transaction: " + transactionId);
         }
 
+        TransactionStatus restoreStatus = tx.getPreDisputeStatus() != null
+                ? tx.getPreDisputeStatus()
+                : TransactionStatus.IN_ESCROW;
+
         tx.setDisputeStatus(DisputeStatus.CLOSED);
-        tx.setStatus(TransactionStatus.IN_ESCROW);
+        tx.setStatus(restoreStatus);
+        tx.setPreDisputeStatus(null);
         return paymentGatewayService.toDTO(transactionRepository.save(tx));
     }
 

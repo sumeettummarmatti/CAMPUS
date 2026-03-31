@@ -47,6 +47,11 @@ public class Transaction {
     @Column(length = 1000)
     private String disputeReason;
 
+    /** Stores the TransactionStatus active immediately before a dispute was opened,
+     *  so that closeDispute can restore the transaction to the correct state. */
+    @Enumerated(EnumType.STRING)
+    private TransactionStatus preDisputeStatus;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
