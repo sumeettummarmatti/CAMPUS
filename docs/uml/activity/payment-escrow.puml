@@ -13,6 +13,9 @@ start
 :Select payment method\n(UPI / card / netbanking);
 :Submit payment;
 
+|Payment Service|
+:Update Transaction → PAYMENT_PROCESSING;
+
 |Payment Gateway|
 :Process payment;
 if (Payment successful?) then (yes)
@@ -23,7 +26,16 @@ else (no)
   :Update Transaction → PAYMENT_FAILED;
   |Buyer (Winner)|
   :Display failure, retry option;
-  stop
+  if (Buyer retries?) then (yes)
+    |Payment Service|
+    :Update Transaction → PAYMENT_PROCESSING;
+    |Payment Gateway|
+    :Process payment;
+  else (abandons / max retries)
+    |Payment Service|
+    :Update Transaction → CANCELLED;
+    stop
+  endif
 endif
 
 |Payment Service|
@@ -33,33 +45,8 @@ endif
 :Notify seller of confirmed payment;
 :Notify buyer: funds held in escrow;
 
-|Seller|
-:Prepare and dispatch item;
-:Mark item as SHIPPED\nin platform;
-:Provide tracking info;
-
-|Buyer (Winner)|
-:Receive item;
-
-if (Buyer confirms delivery\nwithin 7 days?) then (yes)
-  :Click "Confirm Delivery";
-  |Payment Service|
-  :Update Transaction → DELIVERY_CONFIRMED;
-  :Release funds from escrow to seller;
-  :Update Transaction → COMPLETED;
-  :Generate receipt PDF;
-  :Notify seller of fund release;
-
-else (7-day window expires)
-  |Payment Service|
-  :Auto-release funds to seller\n(7-day auto-confirm);
-  :Update Transaction → COMPLETED;
-  :Notify both parties;
-endif
-
-|Buyer (Winner)|
-:Option to raise dispute?;
-if (Dispute raised?) then (yes)
+if (Buyer raises dispute\nbefore item ships?) then (yes)
+  |Buyer (Winner)|
   :Submit dispute with reason;
   |Payment Service|
   :Update Transaction → DISPUTED;
@@ -76,6 +63,58 @@ if (Dispute raised?) then (yes)
     :Release funds to seller;
     |Payment Service|
     :Update Transaction → COMPLETED;
+  endif
+  |Buyer (Winner)|
+  :Rate and review seller;
+  |Seller|
+  :Rate and review buyer;
+  stop
+else (no dispute)
+endif
+
+|Seller|
+:Prepare and dispatch item;
+:Mark item as SHIPPED\nin platform;
+:Update Transaction → SHIPPED;
+:Provide tracking info;
+
+|Buyer (Winner)|
+:Receive item;
+
+if (Buyer raises dispute\n(not received / not as described)?) then (yes)
+  :Submit dispute with reason;
+  |Payment Service|
+  :Update Transaction → DISPUTED;
+  :Freeze escrow release;
+
+  |Admin|
+  :Review dispute evidence;
+  if (Ruling?) then (Buyer wins)
+    :Issue full / partial refund;
+    |Payment Service|
+    :Process refund to buyer;
+    :Update Transaction → REFUNDED;
+  else (Seller wins)
+    :Release funds to seller;
+    |Payment Service|
+    :Update Transaction → COMPLETED;
+  endif
+else (no dispute)
+  if (Buyer confirms delivery\nwithin 7 days?) then (yes)
+    :Click "Confirm Delivery";
+    |Payment Service|
+    :Update Transaction → DELIVERY_CONFIRMED;
+    :Release funds from escrow to seller;
+    :Update Transaction → COMPLETED;
+    :Generate receipt PDF;
+    :Notify seller of fund release;
+
+  else (7-day window expires)
+    |Payment Service|
+    :Auto-release funds to seller\n(7-day auto-confirm);
+    :Update Transaction → DELIVERY_CONFIRMED;
+    :Update Transaction → COMPLETED;
+    :Notify both parties;
   endif
 endif
 
