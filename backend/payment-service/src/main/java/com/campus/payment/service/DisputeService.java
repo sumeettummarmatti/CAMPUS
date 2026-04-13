@@ -5,7 +5,6 @@ import com.campus.payment.model.DisputeStatus;
 import com.campus.payment.model.Transaction;
 import com.campus.payment.model.TransactionStatus;
 import com.campus.payment.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +16,19 @@ import java.time.LocalDateTime;
  *        → (resolve buyer) → REFUNDED  OR  (resolve seller) → COMPLETED
  */
 @Service
-@RequiredArgsConstructor
 public class DisputeService {
 
     private final TransactionRepository transactionRepository;
     private final PaymentGatewayService paymentGatewayService;
     private final EscrowService escrowService;
+
+    public DisputeService(TransactionRepository transactionRepository,
+                          PaymentGatewayService paymentGatewayService,
+                          EscrowService escrowService) {
+        this.transactionRepository = transactionRepository;
+        this.paymentGatewayService = paymentGatewayService;
+        this.escrowService = escrowService;
+    }
 
     /**
      * Open a dispute on an in-escrow or shipped transaction.

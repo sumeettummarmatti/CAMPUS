@@ -4,7 +4,6 @@ import com.campus.payment.dto.DisputeRequest;
 import com.campus.payment.dto.PaymentDTO;
 import com.campus.payment.service.DisputeService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,10 +12,13 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/disputes")
-@RequiredArgsConstructor
 public class DisputeController {
 
     private final DisputeService disputeService;
+
+    public DisputeController(DisputeService disputeService) {
+        this.disputeService = disputeService;
+    }
 
     /**
      * POST /api/disputes/{id}/open — open a dispute on an in-escrow payment.

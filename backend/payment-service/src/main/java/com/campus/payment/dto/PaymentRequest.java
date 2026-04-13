@@ -3,14 +3,12 @@ package com.campus.payment.dto;
 import com.campus.payment.model.PaymentMethod;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
-import lombok.Data;
 
 import java.math.BigDecimal;
 
 /**
  * DTO for initiating a new payment after an auction completes.
  */
-@Data
 public class PaymentRequest {
 
     @NotNull(message = "Auction ID is required")
@@ -28,4 +26,21 @@ public class PaymentRequest {
 
     @NotNull(message = "Payment method is required")
     private PaymentMethod paymentMethod;
+
+    public PaymentRequest() {}
+
+    public Long getAuctionId() { return auctionId; }
+    public void setAuctionId(Long auctionId) { this.auctionId = auctionId; }
+
+    public Long getWinnerId() { return winnerId; }
+    public void setWinnerId(Long winnerId) { this.winnerId = winnerId; }
+
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
+
+    public BigDecimal getAmount() { return amount; }
+    public void setAmount(BigDecimal amount) { this.amount = amount; }
+
+    public PaymentMethod getPaymentMethod() { return paymentMethod; }
+    public void setPaymentMethod(PaymentMethod paymentMethod) { this.paymentMethod = paymentMethod; }
 }

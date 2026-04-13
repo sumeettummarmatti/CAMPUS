@@ -5,7 +5,6 @@ import com.campus.payment.dto.PaymentRequest;
 import com.campus.payment.service.EscrowService;
 import com.campus.payment.service.PaymentGatewayService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,11 +15,16 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/payments")
-@RequiredArgsConstructor
 public class PaymentController {
 
     private final PaymentGatewayService paymentGatewayService;
     private final EscrowService escrowService;
+
+    public PaymentController(PaymentGatewayService paymentGatewayService,
+                             EscrowService escrowService) {
+        this.paymentGatewayService = paymentGatewayService;
+        this.escrowService = escrowService;
+    }
 
     /**
      * POST /api/payments/initiate — create a new PENDING payment for a completed auction.

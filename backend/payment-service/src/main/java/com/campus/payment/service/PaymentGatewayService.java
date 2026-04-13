@@ -5,7 +5,6 @@ import com.campus.payment.dto.PaymentRequest;
 import com.campus.payment.model.Transaction;
 import com.campus.payment.model.TransactionStatus;
 import com.campus.payment.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +14,13 @@ import java.util.List;
  * Core payment gateway — initiates, confirms, and cancels transactions.
  */
 @Service
-@RequiredArgsConstructor
 public class PaymentGatewayService {
 
     private final TransactionRepository transactionRepository;
+
+    public PaymentGatewayService(TransactionRepository transactionRepository) {
+        this.transactionRepository = transactionRepository;
+    }
 
     /**
      * Initiate a new payment for a completed auction.

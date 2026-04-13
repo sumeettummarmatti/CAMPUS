@@ -4,7 +4,6 @@ import com.campus.payment.dto.PaymentDTO;
 import com.campus.payment.model.Transaction;
 import com.campus.payment.model.TransactionStatus;
 import com.campus.payment.repository.TransactionRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,11 +13,16 @@ import java.time.LocalDateTime;
  * Manages escrow fund lifecycle: hold funds, track shipping/delivery, release to seller, or refund to buyer.
  */
 @Service
-@RequiredArgsConstructor
 public class EscrowService {
 
     private final TransactionRepository transactionRepository;
     private final PaymentGatewayService paymentGatewayService;
+
+    public EscrowService(TransactionRepository transactionRepository,
+                         PaymentGatewayService paymentGatewayService) {
+        this.transactionRepository = transactionRepository;
+        this.paymentGatewayService = paymentGatewayService;
+    }
 
     /**
      * Hold funds in escrow — transition PAYMENT_PROCESSING → IN_ESCROW.
