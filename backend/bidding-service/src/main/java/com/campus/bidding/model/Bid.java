@@ -4,16 +4,15 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
+import org.hibernate.annotations.OptimisticLocking;
 import org.hibernate.annotations.OptimisticLockType;
 
 @Entity
-@Table(
-    name = "bids",
-    // if two bids hit the DB at the same time, only one commits.
-    // The other gets an OptimisticLockException, which we catch
-    // and resolve by picking the higher amount
-    optimisticLock = OptimisticLockType.VERSION
-)
+@Table(name = "bids")
+// if two bids hit the DB at the same time, only one commits.
+// The other gets an OptimisticLockException, which we catch
+// and resolve by picking the higher amount
+@OptimisticLocking(type = OptimisticLockType.VERSION)
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
