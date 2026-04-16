@@ -16,12 +16,15 @@ import java.time.LocalDateTime;
 public class EscrowService {
 
     private final TransactionRepository transactionRepository;
-    private final PaymentGatewayService paymentGatewayService;
+    private final TransactionQueryService transactionQueryService;
+    private final INotificationService notifier;
 
     public EscrowService(TransactionRepository transactionRepository,
-                         PaymentGatewayService paymentGatewayService) {
+                         TransactionQueryService transactionQueryService,
+                         INotificationService notifier) {
         this.transactionRepository = transactionRepository;
-        this.paymentGatewayService = paymentGatewayService;
+        this.transactionQueryService = transactionQueryService;
+        this.notifier = notifier;
     }
 
     /**
@@ -30,7 +33,7 @@ public class EscrowService {
      */
     @Transactional
     public PaymentDTO holdFunds(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.PAYMENT_PROCESSING) {
             throw new IllegalStateException(
@@ -38,7 +41,7 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.IN_ESCROW);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -46,7 +49,7 @@ public class EscrowService {
      */
     @Transactional
     public PaymentDTO markShipped(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.IN_ESCROW) {
             throw new IllegalStateException(
@@ -54,7 +57,7 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.SHIPPED);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -62,7 +65,7 @@ public class EscrowService {
      */
     @Transactional
     public PaymentDTO confirmDelivery(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.SHIPPED) {
             throw new IllegalStateException(
@@ -70,7 +73,7 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.DELIVERY_CONFIRMED);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -78,7 +81,7 @@ public class EscrowService {
      */
     @Transactional
     public PaymentDTO releaseFunds(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.DELIVERY_CONFIRMED) {
             throw new IllegalStateException(
@@ -87,7 +90,8 @@ public class EscrowService {
 
         tx.setStatus(TransactionStatus.COMPLETED);
         tx.setReleasedAt(LocalDateTime.now());
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        notifier.notifyFundsReleased(tx.getSellerId(), tx.getAuctionId());
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -95,7 +99,7 @@ public class EscrowService {
      */
     @Transactional
     public PaymentDTO refundFunds(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.IN_ESCROW
                 && tx.getStatus() != TransactionStatus.SHIPPED
@@ -105,6 +109,7 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.REFUNDED);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        notifier.notifyRefundIssued(tx.getWinnerId(), tx.getAuctionId());
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 }

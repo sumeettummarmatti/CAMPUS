@@ -17,9 +17,13 @@ import java.util.List;
 public class PaymentGatewayService {
 
     private final TransactionRepository transactionRepository;
+    private final TransactionQueryService transactionQueryService;
+    private final IPaymentGateway gateway;
 
-    public PaymentGatewayService(TransactionRepository transactionRepository) {
+    public PaymentGatewayService(TransactionRepository transactionRepository, TransactionQueryService transactionQueryService, IPaymentGateway gateway) {
         this.transactionRepository = transactionRepository;
+        this.transactionQueryService = transactionQueryService;
+        this.gateway = gateway;
     }
 
     /**
@@ -52,7 +56,7 @@ public class PaymentGatewayService {
                 .status(TransactionStatus.PENDING)
                 .build();
 
-        return toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -61,7 +65,7 @@ public class PaymentGatewayService {
      */
     @Transactional
     public PaymentDTO confirmPayment(Long transactionId) {
-        Transaction tx = findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.PENDING) {
             throw new IllegalStateException(
@@ -69,7 +73,8 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
-        return toDTO(transactionRepository.save(tx));
+        // gateway.charge() would be called here in production
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -78,7 +83,7 @@ public class PaymentGatewayService {
      */
     @Transactional
     public PaymentDTO markPaymentFailed(Long transactionId) {
-        Transaction tx = findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.PAYMENT_PROCESSING) {
             throw new IllegalStateException(
@@ -86,7 +91,7 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_FAILED);
-        return toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -94,7 +99,7 @@ public class PaymentGatewayService {
      */
     @Transactional
     public PaymentDTO retryPayment(Long transactionId) {
-        Transaction tx = findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.PAYMENT_FAILED) {
             throw new IllegalStateException(
@@ -102,7 +107,7 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
-        return toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -110,7 +115,7 @@ public class PaymentGatewayService {
      */
     @Transactional
     public PaymentDTO cancelPayment(Long transactionId) {
-        Transaction tx = findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.PENDING
                 && tx.getStatus() != TransactionStatus.PAYMENT_FAILED) {
@@ -119,62 +124,8 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.CANCELLED);
-        return toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
-    /**
-     * Retrieve a single transaction by ID.
-     */
-    public PaymentDTO getTransaction(Long transactionId) {
-        return toDTO(findOrThrow(transactionId));
-    }
 
-    /**
-     * All transactions for a given auction.
-     */
-    public List<PaymentDTO> getTransactionsByAuction(Long auctionId) {
-        return transactionRepository.findByAuctionId(auctionId)
-                .stream().map(this::toDTO).toList();
-    }
-
-    /**
-     * All transactions where user is the buyer (winner).
-     */
-    public List<PaymentDTO> getTransactionsByWinner(Long winnerId) {
-        return transactionRepository.findByWinnerId(winnerId)
-                .stream().map(this::toDTO).toList();
-    }
-
-    /**
-     * All transactions where user is the seller.
-     */
-    public List<PaymentDTO> getTransactionsBySeller(Long sellerId) {
-        return transactionRepository.findBySellerId(sellerId)
-                .stream().map(this::toDTO).toList();
-    }
-
-    // ── Package-private helpers used by Escrow/DisputeService ───────────────
-
-    Transaction findOrThrow(Long id) {
-        return transactionRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Transaction not found: " + id));
-    }
-
-    PaymentDTO toDTO(Transaction tx) {
-        return PaymentDTO.builder()
-                .id(tx.getId())
-                .auctionId(tx.getAuctionId())
-                .winnerId(tx.getWinnerId())
-                .sellerId(tx.getSellerId())
-                .amount(tx.getAmount())
-                .status(tx.getStatus())
-                .paymentMethod(tx.getPaymentMethod())
-                .disputeStatus(tx.getDisputeStatus())
-                .disputeReason(tx.getDisputeReason())
-                .preDisputeStatus(tx.getPreDisputeStatus())
-                .createdAt(tx.getCreatedAt())
-                .updatedAt(tx.getUpdatedAt())
-                .releasedAt(tx.getReleasedAt())
-                .build();
-    }
 }

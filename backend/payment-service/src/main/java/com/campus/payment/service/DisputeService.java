@@ -19,15 +19,18 @@ import java.time.LocalDateTime;
 public class DisputeService {
 
     private final TransactionRepository transactionRepository;
-    private final PaymentGatewayService paymentGatewayService;
+    private final TransactionQueryService transactionQueryService;
     private final EscrowService escrowService;
+    private final INotificationService notifier;
 
     public DisputeService(TransactionRepository transactionRepository,
-                          PaymentGatewayService paymentGatewayService,
-                          EscrowService escrowService) {
+                          TransactionQueryService transactionQueryService,
+                          EscrowService escrowService,
+                          INotificationService notifier) {
         this.transactionRepository = transactionRepository;
-        this.paymentGatewayService = paymentGatewayService;
+        this.transactionQueryService = transactionQueryService;
         this.escrowService = escrowService;
+        this.notifier = notifier;
     }
 
     /**
@@ -36,7 +39,7 @@ public class DisputeService {
      */
     @Transactional
     public PaymentDTO openDispute(Long transactionId, String reason) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getStatus() != TransactionStatus.IN_ESCROW
                 && tx.getStatus() != TransactionStatus.SHIPPED) {
@@ -48,7 +51,8 @@ public class DisputeService {
         tx.setStatus(TransactionStatus.DISPUTED);
         tx.setDisputeStatus(DisputeStatus.OPEN);
         tx.setDisputeReason(reason);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        notifier.notifyDisputeOpened(tx.getWinnerId(), tx.getSellerId(), tx.getAuctionId());
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -56,14 +60,14 @@ public class DisputeService {
      */
     @Transactional
     public PaymentDTO reviewDispute(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getDisputeStatus() != DisputeStatus.OPEN) {
             throw new IllegalStateException("Only OPEN disputes can be placed under review");
         }
 
         tx.setDisputeStatus(DisputeStatus.UNDER_REVIEW);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -71,11 +75,12 @@ public class DisputeService {
      */
     @Transactional
     public PaymentDTO resolveDisputeBuyer(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
         requireUnderReview(tx);
 
         tx.setDisputeStatus(DisputeStatus.RESOLVED_BUYER);
         transactionRepository.save(tx);
+        notifier.notifyDisputeResolved(tx.getWinnerId(), tx.getSellerId(), "BUYER");
         return escrowService.refundFunds(transactionId);
     }
 
@@ -85,13 +90,14 @@ public class DisputeService {
      */
     @Transactional
     public PaymentDTO resolveDisputeSeller(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
         requireUnderReview(tx);
 
         tx.setDisputeStatus(DisputeStatus.RESOLVED_SELLER);
         tx.setStatus(TransactionStatus.COMPLETED);
         tx.setReleasedAt(LocalDateTime.now());
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        notifier.notifyDisputeResolved(tx.getWinnerId(), tx.getSellerId(), "SELLER");
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     /**
@@ -101,7 +107,7 @@ public class DisputeService {
      */
     @Transactional
     public PaymentDTO closeDispute(Long transactionId) {
-        Transaction tx = paymentGatewayService.findOrThrow(transactionId);
+        Transaction tx = transactionQueryService.findOrThrow(transactionId);
 
         if (tx.getDisputeStatus() == null || tx.getDisputeStatus() == DisputeStatus.CLOSED) {
             throw new IllegalStateException("No active dispute to close on transaction: " + transactionId);
@@ -114,7 +120,7 @@ public class DisputeService {
         tx.setDisputeStatus(DisputeStatus.CLOSED);
         tx.setStatus(restoreStatus);
         tx.setPreDisputeStatus(null);
-        return paymentGatewayService.toDTO(transactionRepository.save(tx));
+        return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
     // ── private helper ──────────────────────────────────────────────────────

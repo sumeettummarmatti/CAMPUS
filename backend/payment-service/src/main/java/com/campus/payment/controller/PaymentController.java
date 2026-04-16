@@ -4,6 +4,7 @@ import com.campus.payment.dto.PaymentDTO;
 import com.campus.payment.dto.PaymentRequest;
 import com.campus.payment.service.EscrowService;
 import com.campus.payment.service.PaymentGatewayService;
+import com.campus.payment.service.TransactionQueryService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +20,14 @@ public class PaymentController {
 
     private final PaymentGatewayService paymentGatewayService;
     private final EscrowService escrowService;
+    private final TransactionQueryService transactionQueryService;
 
     public PaymentController(PaymentGatewayService paymentGatewayService,
-                             EscrowService escrowService) {
+                             EscrowService escrowService,
+                             TransactionQueryService transactionQueryService) {
         this.paymentGatewayService = paymentGatewayService;
         this.escrowService = escrowService;
+        this.transactionQueryService = transactionQueryService;
     }
 
     /**
@@ -71,7 +75,7 @@ public class PaymentController {
      */
     @GetMapping("/{id}")
     public ResponseEntity<PaymentDTO> getById(@PathVariable Long id) {
-        return ResponseEntity.ok(paymentGatewayService.getTransaction(id));
+        return ResponseEntity.ok(transactionQueryService.getTransaction(id));
     }
 
     /**
@@ -79,7 +83,7 @@ public class PaymentController {
      */
     @GetMapping("/auction/{auctionId}")
     public ResponseEntity<List<PaymentDTO>> byAuction(@PathVariable Long auctionId) {
-        return ResponseEntity.ok(paymentGatewayService.getTransactionsByAuction(auctionId));
+        return ResponseEntity.ok(transactionQueryService.getTransactionsByAuction(auctionId));
     }
 
     /**
@@ -87,7 +91,7 @@ public class PaymentController {
      */
     @GetMapping("/winner/{winnerId}")
     public ResponseEntity<List<PaymentDTO>> byWinner(@PathVariable Long winnerId) {
-        return ResponseEntity.ok(paymentGatewayService.getTransactionsByWinner(winnerId));
+        return ResponseEntity.ok(transactionQueryService.getTransactionsByWinner(winnerId));
     }
 
     /**
@@ -95,7 +99,7 @@ public class PaymentController {
      */
     @GetMapping("/seller/{sellerId}")
     public ResponseEntity<List<PaymentDTO>> bySeller(@PathVariable Long sellerId) {
-        return ResponseEntity.ok(paymentGatewayService.getTransactionsBySeller(sellerId));
+        return ResponseEntity.ok(transactionQueryService.getTransactionsBySeller(sellerId));
     }
 
     /**
