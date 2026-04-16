@@ -8,8 +8,6 @@ import com.campus.payment.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-
 /**
  * Core payment gateway — initiates, confirms, and cancels transactions.
  */
@@ -20,7 +18,8 @@ public class PaymentGatewayService {
     private final TransactionQueryService transactionQueryService;
     private final IPaymentGateway gateway;
 
-    public PaymentGatewayService(TransactionRepository transactionRepository, TransactionQueryService transactionQueryService, IPaymentGateway gateway) {
+    public PaymentGatewayService(TransactionRepository transactionRepository,
+            TransactionQueryService transactionQueryService, IPaymentGateway gateway) {
         this.transactionRepository = transactionRepository;
         this.transactionQueryService = transactionQueryService;
         this.gateway = gateway;
@@ -34,14 +33,14 @@ public class PaymentGatewayService {
     public PaymentDTO initiatePayment(PaymentRequest request) {
         // Prevent duplicate payment for the same auction
         transactionRepository.findByAuctionIdAndStatus(
-                        request.getAuctionId(), TransactionStatus.PENDING)
+                request.getAuctionId(), TransactionStatus.PENDING)
                 .ifPresent(t -> {
                     throw new IllegalStateException(
                             "A pending payment already exists for auction: " + request.getAuctionId());
                 });
 
         transactionRepository.findByAuctionIdAndStatus(
-                        request.getAuctionId(), TransactionStatus.IN_ESCROW)
+                request.getAuctionId(), TransactionStatus.IN_ESCROW)
                 .ifPresent(t -> {
                     throw new IllegalStateException(
                             "Payment for auction " + request.getAuctionId() + " is already in escrow");
@@ -73,7 +72,13 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
-        // gateway.charge() would be called here in production
+
+        // Use the abstract gateway (SimulatedPaymentGateway will return true)
+        boolean success = gateway.charge(tx.getAmount(), tx.getPaymentMethod().name());
+        if (!success) {
+            throw new IllegalStateException("Payment gateway rejected the charge");
+        }
+
         return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
 
@@ -126,6 +131,5 @@ public class PaymentGatewayService {
         tx.setStatus(TransactionStatus.CANCELLED);
         return transactionQueryService.toDTO(transactionRepository.save(tx));
     }
-
 
 }

@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
 
 /**
  * JWT utility — validates and parses tokens issued by the User Service.
