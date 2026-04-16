@@ -1,13 +1,8 @@
 package com.campus.user.service;
 
-import com.campus.user.dto.LoginRequest;
 import com.campus.user.dto.UserDTO;
-import com.campus.user.model.Role;
 import com.campus.user.model.User;
 import com.campus.user.repository.UserRepository;
-import com.campus.user.config.JwtConfig;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,48 +11,13 @@ import java.util.List;
  * Business-logic layer for user management (MVC: Service).
  */
 @Service
-@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtConfig jwtConfig;
 
-    /**
-     * Register a new user. Hashes password with BCrypt.
-     */
-    public UserDTO register(UserDTO dto) {
-        if (userRepository.existsByEmail(dto.getEmail())) {
-            throw new IllegalArgumentException("Email already registered: " + dto.getEmail());
-        }
-
-        User user = User.builder()
-                .email(dto.getEmail())
-                .passwordHash(passwordEncoder.encode(dto.getPassword()))
-                .fullName(dto.getFullName())
-                .hostelName(dto.getHostelName())
-                .role(dto.getRole() != null ? dto.getRole() : Role.BUYER)
-                .verified(false)
-                .build();
-
-        User saved = userRepository.save(user);
-        return toDTO(saved);
+    public UserService(UserRepository userRepository) {
+        this.userRepository = userRepository;
     }
-
-    /**
-     * Authenticate user and return JWT token.
-     */
-    public String login(LoginRequest request) {
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
-
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new IllegalArgumentException("Invalid credentials");
-        }
-
-        return jwtConfig.generateToken(user.getEmail(), user.getRole().name());
-    }
-
     /**
      * Find user by ID.
      */
@@ -102,13 +62,13 @@ public class UserService {
     // ── Mapping helper ──────────────────────────────────────
 
     private UserDTO toDTO(User user) {
-        return UserDTO.builder()
-                .id(user.getId())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .hostelName(user.getHostelName())
-                .role(user.getRole())
-                .verified(user.isVerified())
-                .build();
+        UserDTO dto = new UserDTO();
+        dto.setId(user.getId());
+        dto.setFullName(user.getFullName());
+        dto.setEmail(user.getEmail());
+        dto.setHostelName(user.getHostelName());
+        dto.setRole(user.getRole());
+        dto.setVerified(user.isVerified());
+        return dto;
     }
 }
