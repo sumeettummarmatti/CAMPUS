@@ -9,7 +9,7 @@ The backend consists of 4 core Spring Boot microservices:
 1. **User Service (Port 8081)** ✅: Manages authentication (JWT), user profiles, and seller verification. *(Refactored: Enforced SRP & DIP SOLID principles and removed Lombok for Java 25 compatibility)*
 2. **Auction Service (Port 8082)**: Manages the lifecycle of auctions (draft, scheduled, active, ended) and implements anti-sniping rules.
 3. **Bidding Service (Port 8083)**: Handles real-time WebSockets for live bidding and bid validations.
-4. **Payment Service (Port 8084)** ✅: Escrow payments, transaction lifecycle, and dispute resolution.
+4. **Payment Service (Port 8084)** ✅: Escrow payments, transaction lifecycle, and dispute resolution. *(Refactored: Enforced SRP & DIP SOLID principles)*
 
 Each microservice has its own dedicated PostgreSQL database containerized via Docker.
 
@@ -20,6 +20,15 @@ Each microservice has its own dedicated PostgreSQL database containerized via Do
 | **Factory** | Creational | payment-service | `PaymentGatewayService` |
 | **Observer** | Behavioral | bidding-service | `BidEventPublisher` |
 | **Facade** | Structural | auction-service | `AuctionFacade` |
+
+### SOLID Principles Applied
+- **User Service (user-auth)**:
+  - **Single Responsibility Principle (SRP)**: Split generic implementations into `UserService` (profile management) and `AuthService` (registration/token mapping).
+  - **Dependency Inversion Principle (DIP)**: Core authentication logic decoupled from concrete cryptographic implementations by injecting `ITokenService` and `IPasswordService` interfaces.
+
+- **Payment Service (payments/escrow)**:
+  - **Single Responsibility Principle (SRP)**: Extracted pure transactional query logic out from `PaymentGatewayService` into a dedicated lightweight `TransactionQueryService`.
+  - **Dependency Inversion Principle (DIP)**: `PaymentGatewayService` operates generically over an abstract `IPaymentGateway` instead of a concrete SDK, and `EscrowService`/`DisputeService` delegates alerts to an abstract `INotificationService`.
 
 ---
 
