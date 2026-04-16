@@ -4,7 +4,6 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -29,10 +28,12 @@ import java.util.List;
  */
 @Configuration
 @EnableWebSecurity
-@RequiredArgsConstructor
 public class SecurityConfig {
-
     private final JwtConfig jwtConfig;
+
+    public SecurityConfig(JwtConfig jwtConfig) {
+        this.jwtConfig = jwtConfig;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {

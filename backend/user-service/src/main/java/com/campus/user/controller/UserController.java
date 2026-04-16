@@ -3,7 +3,6 @@ package com.campus.user.controller;
 import com.campus.user.dto.UserDTO;
 import com.campus.user.service.SellerVerificationService;
 import com.campus.user.service.UserService;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,11 +14,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
 public class UserController {
-
     private final UserService userService;
     private final SellerVerificationService sellerVerificationService;
+
+    public UserController(UserService userService, SellerVerificationService sellerVerificationService) {
+        this.userService = userService;
+        this.sellerVerificationService = sellerVerificationService;
+    }
 
     /**
      * GET /api/users/{id} — retrieve user profile.

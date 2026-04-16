@@ -3,7 +3,6 @@ package com.campus.user.service;
 import com.campus.user.model.Role;
 import com.campus.user.model.User;
 import com.campus.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
@@ -11,10 +10,12 @@ import org.springframework.stereotype.Service;
  * Transitions: BUYER → (request) → PENDING → (approve/reject) → SELLER / BUYER
  */
 @Service
-@RequiredArgsConstructor
 public class SellerVerificationService {
-
     private final UserRepository userRepository;
+
+    public SellerVerificationService(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     /**
      * Buyer requests upgrade to seller role.
