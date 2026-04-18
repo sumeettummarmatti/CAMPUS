@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class BidRestService {
 
-    private static final String API_URL = "http://localhost:8083/api/bids";
+    private static final String API_URL = AppConfig.biddingServiceUrl() + "/api/bids";
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final String authToken;

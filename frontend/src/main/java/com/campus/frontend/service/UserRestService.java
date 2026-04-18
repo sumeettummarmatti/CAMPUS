@@ -14,7 +14,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class UserRestService {
 
-    private static final String API_URL = "http://localhost:8081/api/auth";
+    private static final String API_URL = AppConfig.userServiceUrl() + "/api/auth";
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     
