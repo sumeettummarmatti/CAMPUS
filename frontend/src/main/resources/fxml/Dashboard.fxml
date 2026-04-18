@@ -1,24 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox alignment="CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
+<VBox spacing="15.0" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.campus.frontend.controller.DashboardController">
     <padding>
-        <Insets bottom="40.0" left="40.0" right="40.0" top="40.0"/>
+        <Insets top="30" bottom="30" left="40" right="40"/>
     </padding>
 
-    <Label fx:id="welcomeLabel" text="Loading..." textFill="#2c3e50">
-        <font>
-            <Font name="System Bold" size="24.0"/>
-        </font>
+    <Label fx:id="welcomeLabel" textFill="#2c3e50">
+        <font><Font name="System Bold" size="20.0"/></font>
     </Label>
 
-    <Label text="This is the main application interface." textFill="#7f8c8d"/>
+    <Separator/>
 
-    <Button text="Logout" onAction="#onLogout" prefWidth="150.0" prefHeight="35.0"
+    <Label text="Place a Bid" textFill="#2c3e50">
+        <font><Font name="System Bold" size="16.0"/></font>
+    </Label>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Auction ID:" minWidth="80"/>
+        <TextField fx:id="auctionIdField" promptText="e.g. 1" prefWidth="100"/>
+        <Button text="Connect Live" onAction="#onConnectWebSocket"
+                style="-fx-background-color: #8e44ad; -fx-text-fill: white;"/>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Buyer ID:" minWidth="80"/>
+        <TextField fx:id="buyerIdField" promptText="e.g. 1" prefWidth="100"/>
+    </HBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Amount (₹):" minWidth="80"/>
+        <TextField fx:id="bidAmountField" promptText="e.g. 500.00" prefWidth="100"/>
+    </HBox>
+
+    <Button text="Place Bid" onAction="#onPlaceBid" prefWidth="150" prefHeight="35"
+            style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
+
+    <Label fx:id="bidStatusLabel" textFill="#e74c3c" wrapText="true"/>
+
+    <Separator/>
+
+    <Label text="Live Feed" textFill="#2c3e50">
+        <font><Font name="System Bold" size="14.0"/></font>
+    </Label>
+    <Label fx:id="liveHighestBidLabel" text="Not connected yet." textFill="#27ae60"/>
+
+    <Separator/>
+
+    <Button text="Logout" onAction="#onLogout" prefWidth="120"
             style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;"/>
 </VBox>
