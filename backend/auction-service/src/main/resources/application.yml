@@ -40,3 +40,7 @@ scheduling:
     fixed-rate: 60000  # Check every 60 seconds
   archive:
     cron: "0 0 0 * * ?"  # Every day at midnight
+
+services:
+  user-service-url: http://localhost:8081
+  bidding-service-url: http://localhost:8083
