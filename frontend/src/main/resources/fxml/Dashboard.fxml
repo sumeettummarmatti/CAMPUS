@@ -4,54 +4,85 @@
 <?import javafx.scene.layout.*?>
 <?import javafx.scene.text.Font?>
 
-<VBox spacing="15.0" xmlns="http://javafx.com/javafx/17"
-      xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.campus.frontend.controller.DashboardController">
-    <padding>
-        <Insets top="30" bottom="30" left="40" right="40"/>
-    </padding>
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.campus.frontend.controller.DashboardController">
 
-    <Label fx:id="welcomeLabel" textFill="#2c3e50">
-        <font><Font name="System Bold" size="20.0"/></font>
-    </Label>
+    <!-- TOP NAV BAR -->
+    <top>
+        <HBox spacing="12" alignment="CENTER_LEFT" style="-fx-background-color: #2c3e50; -fx-padding: 10 20;">
+            <Label text="CAMPUS" style="-fx-text-fill: white; -fx-font-size: 18; -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="roleLabel" style="-fx-text-fill: #bdc3c7;"/>
+            <Button fx:id="toggleRoleBtn" text="Switch to Seller" onAction="#onToggleRole"
+                    style="-fx-background-color: #8e44ad; -fx-text-fill: white;"/>
+            <Button text="Profile" onAction="#onProfile"
+                    style="-fx-background-color: #16a085; -fx-text-fill: white;"/>
+            <Button text="Logout" onAction="#onLogout"
+                    style="-fx-background-color: #c0392b; -fx-text-fill: white;"/>
+        </HBox>
+    </top>
 
-    <Separator/>
+    <!-- MAIN CONTENT (TabPane switches buyer/seller views) -->
+    <center>
+        <TabPane fx:id="mainTabs" tabClosingPolicy="UNAVAILABLE">
 
-    <Label text="Place a Bid" textFill="#2c3e50">
-        <font><Font name="System Bold" size="16.0"/></font>
-    </Label>
+            <!-- BUYER TAB: browse active auctions -->
+            <Tab text="Browse Auctions" fx:id="buyerTab">
+                <VBox spacing="10">
+                    <padding><Insets top="15" left="20" right="20" bottom="15"/></padding>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Active Auctions" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Refresh" onAction="#onRefreshAuctions"/>
+                    </HBox>
+                    <ListView fx:id="auctionListView" VBox.vgrow="ALWAYS" prefHeight="350"/>
+                    <Separator/>
+                    <Label text="Place a Bid" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                    <HBox spacing="10">
+                        <Label text="Auction ID:" minWidth="80"/>
+                        <TextField fx:id="auctionIdField" prefWidth="80"/>
+                        <Label text="Amount (₹):" minWidth="80"/>
+                        <TextField fx:id="bidAmountField" prefWidth="100"/>
+                        <Button text="Place Bid" onAction="#onPlaceBid"
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                        <Button text="Watch Live" onAction="#onConnectWebSocket"
+                                style="-fx-background-color: #8e44ad; -fx-text-fill: white;"/>
+                    </HBox>
+                    <Label fx:id="bidStatusLabel" style="-fx-text-fill: #e74c3c;" wrapText="true"/>
+                    <Label fx:id="liveHighestBidLabel" text="Not watching any auction." style="-fx-text-fill: #27ae60;"/>
+                </VBox>
+            </Tab>
 
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Auction ID:" minWidth="80"/>
-        <TextField fx:id="auctionIdField" promptText="e.g. 1" prefWidth="100"/>
-        <Button text="Connect Live" onAction="#onConnectWebSocket"
-                style="-fx-background-color: #8e44ad; -fx-text-fill: white;"/>
-    </HBox>
+            <!-- SELLER TAB: manage own auctions -->
+            <Tab text="My Auctions" fx:id="sellerTab">
+                <VBox spacing="10">
+                    <padding><Insets top="15" left="20" right="20" bottom="15"/></padding>
+                    <Label text="Create New Auction" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                    <GridPane hgap="10" vgap="8">
+                        <Label text="Title:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
+                        <TextField fx:id="newTitleField" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="200"/>
+                        <Label text="Description:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
+                        <TextField fx:id="newDescField" GridPane.columnIndex="1" GridPane.rowIndex="1" prefWidth="200"/>
+                        <Label text="Starting price (₹):" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
+                        <TextField fx:id="newPriceField" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+                        <Label text="Reserve price (₹):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
+                        <TextField fx:id="newReserveField" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
+                        <Label text="Start (yyyy-MM-ddTHH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <TextField fx:id="newStartField" promptText="2025-06-01T10:00" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
+                        <Label text="End (yyyy-MM-ddTHH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                        <TextField fx:id="newEndField" promptText="2025-06-01T18:00" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+                    </GridPane>
+                    <Button text="Create &amp; Schedule Auction" onAction="#onCreateAuction"
+                            style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;"/>
+                    <Label fx:id="createStatusLabel" wrapText="true"/>
+                    <Separator/>
+                    <Label text="My Listed Auctions" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
+                    <ListView fx:id="myAuctionListView" prefHeight="200"/>
+                    <Button text="Refresh My Auctions" onAction="#onRefreshMyAuctions"/>
+                </VBox>
+            </Tab>
 
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Buyer ID:" minWidth="80"/>
-        <TextField fx:id="buyerIdField" promptText="e.g. 1" prefWidth="100"/>
-    </HBox>
-
-    <HBox spacing="10" alignment="CENTER_LEFT">
-        <Label text="Amount (₹):" minWidth="80"/>
-        <TextField fx:id="bidAmountField" promptText="e.g. 500.00" prefWidth="100"/>
-    </HBox>
-
-    <Button text="Place Bid" onAction="#onPlaceBid" prefWidth="150" prefHeight="35"
-            style="-fx-background-color: #27ae60; -fx-text-fill: white; -fx-font-weight: bold;"/>
-
-    <Label fx:id="bidStatusLabel" textFill="#e74c3c" wrapText="true"/>
-
-    <Separator/>
-
-    <Label text="Live Feed" textFill="#2c3e50">
-        <font><Font name="System Bold" size="14.0"/></font>
-    </Label>
-    <Label fx:id="liveHighestBidLabel" text="Not connected yet." textFill="#27ae60"/>
-
-    <Separator/>
-
-    <Button text="Logout" onAction="#onLogout" prefWidth="120"
-            style="-fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold;"/>
-</VBox>
+        </TabPane>
+    </center>
+</BorderPane>
