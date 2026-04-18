@@ -2,6 +2,8 @@ package com.campus.frontend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.campus.frontend.model.User;
+import com.campus.frontend.config.AppConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,7 +16,7 @@ import java.nio.charset.StandardCharsets;
  */
 public class UserRestService {
 
-    private static final String API_URL = "http://localhost:8081/api/auth";
+    private static final String API_URL = AppConfig.userServiceUrl() + "/api/auth";
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     
@@ -33,23 +35,51 @@ public class UserRestService {
      * Login and attempt to get JWT token.
      * Throws exception on failure.
      */
-    public boolean login(String email, String password) throws Exception {
+    public User login(String email, String password) throws Exception {
         String jsonPayload = String.format("{\"email\":\"%s\", \"password\":\"%s\"}", email, password);
 
-        HttpRequest request = HttpRequest.newBuilder()
+        HttpRequest loginReq = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL + "/login"))
                 .header("Content-Type", "application/json")
                 .POST(HttpRequest.BodyPublishers.ofString(jsonPayload, StandardCharsets.UTF_8))
                 .build();
 
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> loginResp = httpClient.send(loginReq, HttpResponse.BodyHandlers.ofString());
 
-        if (response.statusCode() == 200) {
-            JsonNode rootNode = mapper.readTree(response.body());
-            this.authToken = rootNode.path("token").asText();
-            return true;
-        } else {
-            throw new Exception("Login failed: " + response.body());
+        if (loginResp.statusCode() != 200) {
+            throw new Exception("Login failed: " + loginResp.body());
+        }
+
+        JsonNode root = mapper.readTree(loginResp.body());
+        this.authToken = root.path("token").asText();
+
+        // Decode role from JWT claims (the payload is base64, second segment)
+        String[] parts = authToken.split("\\.");
+        String payload = new String(java.util.Base64.getUrlDecoder().decode(parts[1]));
+        JsonNode claims = mapper.readTree(payload);
+
+        User user = new User();
+        user.setEmail(email);
+        user.setRole(claims.path("role").asText("BUYER"));
+        // Fetch full profile from user service
+        fetchAndFillProfile(user);
+        return user;
+    }
+
+    private void fetchAndFillProfile(User user) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/me"))
+                    .header("Authorization", "Bearer" + authToken)
+                    .GET().build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 200) {
+                JsonNode profile = mapper.readTree(resp.body());
+                user.setId(profile.path("id").asLong());
+                user.setFullName(profile.path("fullName").asText());
+            }
+        } catch (Exception e) {
+            System.err.println("Could not fetch profile: " + e.getMessage());
         }
     }
 

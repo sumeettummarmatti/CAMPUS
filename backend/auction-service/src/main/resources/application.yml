@@ -19,7 +19,8 @@ spring:
       enabled: true
 
 server:
-  port: 8081
+  port: 8082
+  address: 0.0.0.0
   servlet:
     context-path: /
 
@@ -39,3 +40,7 @@ scheduling:
     fixed-rate: 60000  # Check every 60 seconds
   archive:
     cron: "0 0 0 * * ?"  # Every day at midnight
+
+services:
+  user-service-url: http://localhost:8081
+  bidding-service-url: http://localhost:8083

@@ -5,10 +5,13 @@ import com.campus.auction.model.AuctionStatus;
 import com.campus.auction.repository.AuctionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -27,6 +30,11 @@ public class AuctionSchedulerService {
 
     private final AuctionRepository auctionRepository;
     private final AuctionService auctionService;
+
+    @Value("${services.bidding-service-url}")
+    private String biddingServiceUrl;
+    
+    private final RestTemplate restTemplate;
 
     /**
      * Run every minute to activate scheduled auctions.
@@ -77,12 +85,30 @@ public class AuctionSchedulerService {
         for (Auction auction : auctionsToEnd) {
             try {
                 auctionService.endAuction(auction.getId());
-                log.info("Successfully ended auction ID: {}", auction.getId());
-                
-                // TODO: Query Bidding Service for highest bid
-                // TODO: If highest bid >= reserve price → closeSold
-                //       else → closeNoSale
-                
+
+                // Ask Bidding Service for the highest bid
+                String url = biddingServiceUrl + "/api/bids/auction/" + auction.getId();
+                try{
+                    // The bidding service returns a list
+                    com.fasterxml.jackson.databind.JsonNode[] bids = restTemplate.getForObject(url, com.fasterxml.jackson.databind.JsonNode[].class);
+
+                    if (bids != null && bids.length > 0){
+                        double highestBid = bids[0].get("amount").asDouble();
+                        if (highestBid >= auction.getReservePrice()) {
+                            auctionService.closeSold(auction.getId(), "Winner determined");
+                            // Tell binding service to mark winners/losers
+                            restTemplate.postForEntity(
+                                biddingServiceUrl + "/api/bids/auction/" + auction.getId() + "/resolve", null, Void.class);
+                        } else {
+                            auctionService.closeNoSale(auction.getId(), "Reserve price not met");
+                        }
+                    } else {
+                        auctionService.closeNoSale(auction.getId(), "No bids received");
+                    }
+                } catch (Exception ex) {
+                    log.warn("Could not reach bidding service for action {}: {}", auction.getId(), ex.getMessage());
+                    auctionService.closeNoSale(auction.getId(), "No bids received");
+                }      
             } catch (Exception e) {
                 log.error("Error ending auction ID: {}", auction.getId(), e);
             }

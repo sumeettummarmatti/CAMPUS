@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="15" xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.campus.frontend.controller.ProfileController">
+    <padding><Insets top="20" left="30" right="30" bottom="20"/></padding>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="My Profile" style="-fx-font-size: 20; -fx-font-weight: bold;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="← Back" onAction="#onBack"/>
+    </HBox>
+
+    <Label fx:id="userInfoLabel" style="-fx-text-fill: #555;"/>
+
+    <!-- Money summary cards -->
+    <HBox spacing="20">
+        <VBox style="-fx-background-color: #eafaf1; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <Label text="Total Earned (as Seller)" style="-fx-font-weight: bold; -fx-text-fill: #1a7a4a;"/>
+            <Label fx:id="earningsLabel" style="-fx-font-size: 22; -fx-text-fill: #27ae60;"/>
+        </VBox>
+        <VBox style="-fx-background-color: #fef9e7; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <Label text="Total Spent (as Buyer)" style="-fx-font-weight: bold; -fx-text-fill: #7d6608;"/>
+            <Label fx:id="spendingLabel" style="-fx-font-size: 22; -fx-text-fill: #f39c12;"/>
+        </VBox>
+    </HBox>
+
+    <TabPane tabClosingPolicy="UNAVAILABLE">
+
+        <Tab text="Purchases (Buying)">
+            <VBox spacing="8">
+                <padding><Insets top="10"/></padding>
+                <ListView fx:id="spendingListView" prefHeight="200"/>
+                <HBox spacing="10">
+                    <TextField fx:id="confirmTxIdField" promptText="Transaction ID" prefWidth="140"/>
+                    <Button text="Confirm Delivery" onAction="#onConfirmDelivery"
+                            style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+                    <TextField fx:id="disputeReasonField" promptText="Dispute reason" HBox.hgrow="ALWAYS"/>
+                    <Button text="Open Dispute" onAction="#onOpenDispute"
+                            style="-fx-background-color: #e74c3c; -fx-text-fill: white;"/>
+                </HBox>
+            </VBox>
+        </Tab>
+
+        <Tab text="Sales (Selling)">
+            <VBox spacing="8">
+                <padding><Insets top="10"/></padding>
+                <ListView fx:id="earningsListView" prefHeight="200"/>
+            </VBox>
+        </Tab>
+
+    </TabPane>
+
+    <Label fx:id="actionStatusLabel" wrapText="true"/>
+</VBox>

@@ -40,6 +40,16 @@ public class UserController {
     }
 
     /**
+     * GET /api/users/me — returns the profile of the currently authenticated user.
+     */
+    @GetMapping("/me")
+    public ResponseEntity<UserDTO> getMyProfile(
+            org.springframework.security.core.Authentication auth) {
+        String email = auth.getName(); // set by JwtAuthFilter
+        return ResponseEntity.ok(userService.findByEmail(email));
+    }
+
+    /**
      * PUT /api/users/{id} — update user profile.
      */
     @PutMapping("/{id}")

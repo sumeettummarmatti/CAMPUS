@@ -28,6 +28,9 @@
 
     <Button text="Login" onAction="#onLogin" prefWidth="200.0" prefHeight="35.0"
             style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+            
+    <Button text="Demo Setup (Load Fake Data)" onAction="#onDemoSetup" prefWidth="200.0" prefHeight="35.0"
+            style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold;"/>
 
     <Label fx:id="errorLabel" textFill="#e74c3c" wrapText="true"/>
 

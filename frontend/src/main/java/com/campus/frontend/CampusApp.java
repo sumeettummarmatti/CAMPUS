@@ -6,6 +6,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 import com.campus.frontend.service.UserRestService;
+import com.campus.frontend.model.User;
 
 /**
  * Main application class for the CAMPUS JavaFX frontend.
@@ -17,6 +18,11 @@ public class CampusApp extends Application {
     
     // Global shared REST client holding the auth token
     private UserRestService restService;
+
+    private User currentUser;
+
+    public User getCurrentUser() { return currentUser; }
+    public void setCurrentUser(User user) { this.currentUser = user; }
 
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -66,5 +72,12 @@ public class CampusApp extends Application {
 
     public static void main(String[] args) {
         launch(args);
+    }
+
+    /** Transition to Profile page */
+    public void loadProfileScreen() throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Profile.fxml"));
+        Parent root = loader.load();
+        primaryStage.setScene(new Scene(root, 800, 600));
     }
 }

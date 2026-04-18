@@ -8,13 +8,14 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import com.campus.frontend.config.AppConfig;
 
 /**
  * REST client for the Bidding Service (port 8083).
  */
 public class BidRestService {
 
-    private static final String API_URL = "http://localhost:8083/api/bids";
+    private static final String API_URL = AppConfig.biddingServiceUrl() + "/api/bids";
     private final HttpClient httpClient;
     private final ObjectMapper mapper;
     private final String authToken;
