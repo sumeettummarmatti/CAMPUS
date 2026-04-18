@@ -31,17 +31,15 @@ public class LoginController {
 
         new Thread(() -> {
             try {
-                boolean success = CampusApp.getInstance().getRestService().login(email, password);
-                if (success) {
-                    Platform.runLater(() -> {
-                        try {
-                            CampusApp.getInstance().loadDashboard();
-                        } catch (Exception e) {
-                            errorLabel.setText("Error loading dashboard.");
-                            e.printStackTrace();
-                        }
-                    });
-                }
+                User loggedInUser = CampusApp.getInstance().getRestService().login(email, password);
+                Platform.runLater(() -> {
+                    try {
+                        CampusApp.getInstance().setCurrentUser(loggedInUser);
+                        CampusApp.getInstance().loadDashboard();
+                    } catch (Exception e) {
+                        errorLabel.setText("Error loading dashboard.");
+                    }
+                });
             } catch (Exception e) {
                 Platform.runLater(() -> errorLabel.setText(e.getMessage()));
             }
