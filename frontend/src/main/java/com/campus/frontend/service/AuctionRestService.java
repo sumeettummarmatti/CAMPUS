@@ -22,7 +22,7 @@ public class AuctionRestService {
     public JsonNode getActiveAuctions() throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/browse/active?size=50"))
-                .header("Authorization", "Bearer" + token)
+                .header("Authorization", "Bearer " + token)
                 .GET().build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
         JsonNode page = mapper.readTree(resp.body());
@@ -32,19 +32,18 @@ public class AuctionRestService {
     /** Returns auctions created by a specific seller */
     public JsonNode getMyAuctions(Long sellerId) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
-                .uri(URI.create(BASE + "/seller" + sellerId + "?size=50"))
-                .header("Authorization", "Bearer" + token)
+                .uri(URI.create(BASE + "/seller/" + sellerId + "?size=50"))
+                .header("Authorization", "Bearer " + token)
                 .GET().build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
         JsonNode page = mapper.readTree(resp.body());
         return page.path("content");
     }
 
-    /** Creates a new auction (seller only) */
     public JsonNode createAuction(String title, String desc, double price,
                                     double reserve, String startTime,
                                     String endTime, Long sellerId) throws Exception {
-        String body = String.format(
+        String body = String.format(java.util.Locale.US,
             "{\"title\":\"%s\",\"description\":\"%s\",\"price\":%.2f," +
             "\"reservePrice\":%.2f,\"startTime\":\"%s\",\"endTime\":\"%s\",\"sellerId\":%d}",
             title, desc, price, reserve, startTime, endTime, sellerId);    
@@ -55,6 +54,9 @@ public class AuctionRestService {
                 .header("Authorization", "Bearer " + token)
                 .POST(HttpRequest.BodyPublishers.ofString(body)).build();
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200 && resp.statusCode() != 201) {
+            throw new Exception("Create failed: " + resp.body());
+        }
         return mapper.readTree(resp.body());
     }
 
@@ -64,6 +66,9 @@ public class AuctionRestService {
                 .uri(URI.create(BASE + "/" + auctionId + "/schedule"))
                 .header("Authorization", "Bearer " + token)
                 .POST(HttpRequest.BodyPublishers.noBody()).build();
-        http.send(req, HttpResponse.BodyHandlers.ofString());
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Schedule failed: " + resp.body());
+        }
     }
 }

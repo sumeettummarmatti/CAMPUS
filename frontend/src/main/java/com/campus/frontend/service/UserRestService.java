@@ -70,7 +70,7 @@ public class UserRestService {
         try {
             HttpRequest req = HttpRequest.newBuilder()
                     .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/me"))
-                    .header("Authorization", "Bearer" + authToken)
+                    .header("Authorization", "Bearer " + authToken)
                     .GET().build();
             HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
             if (resp.statusCode() == 200) {

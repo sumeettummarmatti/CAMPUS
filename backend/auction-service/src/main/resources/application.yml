@@ -10,9 +10,9 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
   datasource:
-    url: jdbc:postgresql://localhost:5432/auction_db
-    username: postgres
-    password: postgres
+    url: jdbc:postgresql://localhost:5433/campus_auctions
+    username: campus
+    password: campus_secret
     driver-class-name: org.postgresql.Driver
   devtools:
     restart:
@@ -40,6 +40,9 @@ scheduling:
     fixed-rate: 60000  # Check every 60 seconds
   archive:
     cron: "0 0 0 * * ?"  # Every day at midnight
+
+jwt:
+  secret: ${JWT_SECRET:campus-super-secret-key-change-in-production-min-32-chars!!}
 
 services:
   user-service-url: http://localhost:8081
