@@ -73,4 +73,11 @@ public class CampusApp extends Application {
     public static void main(String[] args) {
         launch(args);
     }
+
+    /** Transition to Profile page */
+    public void loadProfileScreen() throws Exception {
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Profile.fxml"));
+        Parent root = loader.load();
+        primaryStage.setScene(new Scene(root, 800, 600));
+    }
 }

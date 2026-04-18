@@ -65,7 +65,20 @@ public class UserRestService {
     }
 
     private void fetchAndFillProfile(User user) {
-        // TODO
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/me"))
+                    .header("Authorization", "Bearer" + authToken)
+                    .GET().build();
+            HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 200) {
+                JsonNode profile = mapper.readTree(resp.body());
+                user.setId(profile.path("id").asLong());
+                user.setFullName(profile.path("fullName").asText());
+            }
+        } catch (Exception e) {
+            System.err.println("Could not fetch profile: " + e.getMessage());
+        }
     }
 
     /**
