@@ -57,18 +57,20 @@ public class DashboardController {
     }
 
     private void updateRoleDisplay() {
-        String role = currentUser.getRole();
-        roleLabel.setText("Logged in as: " + currentUser.getEmail() + " (" + role + ")");
+        // Every user can do both — the toggle just switches the active tab
+        String mode = viewingAsSeller ? "Seller mode" : "Buyer mode";
+        roleLabel.setText(currentUser.getEmail() + " — " + mode);
 
-        if (viewingAsSeller && role.equals("SELLER")) {
+        if (viewingAsSeller) {
             mainTabs.getSelectionModel().select(sellerTab);
-            toggleRoleBtn.setText("Switch to Buyer");
+            toggleRoleBtn.setText("Switch to Buyer mode");
         } else {
             mainTabs.getSelectionModel().select(buyerTab);
-            toggleRoleBtn.setText("Switch to Seller");
-            // Hide seller tab if user is not a seller
-            sellerTab.setDisable(!role.equals("SELLER") && !role.equals("ADMIN"));
+            toggleRoleBtn.setText("Switch to Seller mode");
         }
+
+        // Never disable the seller tab — all users can sell
+        sellerTab.setDisable(false);
     }
 
     @FXML
@@ -76,6 +78,7 @@ public class DashboardController {
         viewingAsSeller = !viewingAsSeller;
         updateRoleDisplay();
         if (viewingAsSeller) onRefreshMyAuctions(null);
+        else onRefreshAuctions(null);
     }
 
     @FXML

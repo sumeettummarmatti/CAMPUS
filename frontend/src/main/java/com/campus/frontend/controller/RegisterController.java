@@ -4,7 +4,6 @@ import com.campus.frontend.CampusApp;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -17,21 +16,16 @@ public class RegisterController {
     @FXML private TextField fullNameField;
     @FXML private TextField emailField;
     @FXML private PasswordField passwordField;
-    @FXML private ComboBox<String> roleComboBox;
+
     @FXML private Label errorLabel;
 
-    @FXML
-    public void initialize() {
-        roleComboBox.getItems().addAll("BUYER", "SELLER");
-        roleComboBox.getSelectionModel().selectFirst();
-    }
 
     @FXML
     public void onRegister(ActionEvent event) {
         String fullName = fullNameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
-        String role = roleComboBox.getValue();
+
 
         if (fullName.isBlank() || email.isBlank() || password.isBlank()) {
             errorLabel.setText("All fields are required.");
@@ -47,7 +41,7 @@ public class RegisterController {
 
         new Thread(() -> {
             try {
-                CampusApp.getInstance().getRestService().register(fullName, email, password, role);
+                CampusApp.getInstance().getRestService().register(fullName, email, password);
                 Platform.runLater(() -> {
                     errorLabel.setStyle("-fx-text-fill: green;");
                     errorLabel.setText("Registration successful! Please login.");

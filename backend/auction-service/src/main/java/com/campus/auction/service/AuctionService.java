@@ -92,9 +92,6 @@ public class AuctionService {
         // Validate before scheduling
         auction.validateForCreation();
 
-        // TODO: Verify seller with User Service
-        // checkSellerVerified(auction.getSellerId());
-
         auction.setStatus(AuctionStatus.SCHEDULED);
         auction.setScheduledAt(LocalDateTime.now());
 

@@ -60,7 +60,7 @@ public class UserRestService {
 
         User user = new User();
         user.setEmail(email);
-        user.setRole(claims.path("role").asText("BUYER"));
+        user.setRole(claims.path("role").asText("USER")); // "USER" or "ADMIN" only
         // Fetch full profile from user service
         fetchAndFillProfile(user);
         return user;
@@ -86,10 +86,10 @@ public class UserRestService {
     /**
      * Register a new user.
      */
-    public void register(String fullName, String email, String password, String role) throws Exception {
+    public void register(String fullName, String email, String password) throws Exception {
         String jsonPayload = String.format(
-            "{\"fullName\":\"%s\", \"email\":\"%s\", \"password\":\"%s\", \"role\":\"%s\"}",
-            fullName, email, password, role
+            "{\"fullName\":\"%s\", \"email\":\"%s\", \"password\":\"%s\"}",
+            fullName, email, password
         );
 
         HttpRequest request = HttpRequest.newBuilder()

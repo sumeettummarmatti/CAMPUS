@@ -33,8 +33,8 @@ public class AuthService {
         user.setPasswordHash(passwordService.encode(dto.getPassword()));
         user.setFullName(dto.getFullName());
         user.setHostelName(dto.getHostelName());
-        user.setRole(dto.getRole() != null ? dto.getRole() : Role.BUYER);
-        user.setVerified(false);
+        user.setRole(Role.USER);
+        user.setVerified(true);
 
         User saved = userRepository.save(user);
         return toDTO(saved);

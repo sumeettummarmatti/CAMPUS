@@ -21,10 +21,6 @@
     <TextField fx:id="emailField" promptText="College Email" prefHeight="35.0"/>
     <PasswordField fx:id="passwordField" promptText="Password (min 6 chars)" prefHeight="35.0"/>
 
-    <HBox alignment="CENTER_LEFT" spacing="10.0">
-        <Label text="I want to be a: "/>
-        <ComboBox fx:id="roleComboBox" prefWidth="150.0"/>
-    </HBox>
 
     <Button text="Register" onAction="#onRegister" prefWidth="200.0" prefHeight="35.0"
             style="-fx-background-color: #2ecc71; -fx-text-fill: white; -fx-font-weight: bold;"/>

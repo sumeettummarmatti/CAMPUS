@@ -16,11 +16,9 @@ import java.util.Map;
 @RequestMapping("/api/users")
 public class UserController {
     private final UserService userService;
-    private final SellerVerificationService sellerVerificationService;
 
-    public UserController(UserService userService, SellerVerificationService sellerVerificationService) {
+    public UserController(UserService userService) {
         this.userService = userService;
-        this.sellerVerificationService = sellerVerificationService;
     }
 
     /**
@@ -57,34 +55,5 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody UserDTO dto) {
         return ResponseEntity.ok(userService.updateProfile(id, dto));
-    }
-
-    // ── Seller Verification ─────────────────────────────
-
-    /**
-     * POST /api/users/{id}/verify/request — buyer requests seller upgrade.
-     */
-    @PostMapping("/{id}/verify/request")
-    public ResponseEntity<Map<String, String>> requestVerification(@PathVariable Long id) {
-        sellerVerificationService.requestVerification(id);
-        return ResponseEntity.ok(Map.of("message", "Verification request submitted"));
-    }
-
-    /**
-     * POST /api/users/{id}/verify/approve — admin approves seller.
-     */
-    @PostMapping("/{id}/verify/approve")
-    public ResponseEntity<Map<String, String>> approveSeller(@PathVariable Long id) {
-        sellerVerificationService.approveSeller(id);
-        return ResponseEntity.ok(Map.of("message", "Seller approved"));
-    }
-
-    /**
-     * POST /api/users/{id}/verify/reject — admin rejects seller.
-     */
-    @PostMapping("/{id}/verify/reject")
-    public ResponseEntity<Map<String, String>> rejectSeller(@PathVariable Long id) {
-        sellerVerificationService.rejectSeller(id);
-        return ResponseEntity.ok(Map.of("message", "Seller rejected"));
     }
 }

@@ -52,7 +52,7 @@ public class User {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         if (this.role == null) {
-            this.role = Role.BUYER;
+            this.role = Role.USER;
         }
     }
 

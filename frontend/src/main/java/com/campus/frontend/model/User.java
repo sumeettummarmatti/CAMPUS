@@ -7,6 +7,8 @@ public class User {
     private Long id;
     private String fullName;
     private String email;
+    // role will be "USER" for everyone, "ADMIN" for admins.
+    // It does NOT determine buying/selling capability — all users can do both.
     private String role;
     private boolean verified;
 
