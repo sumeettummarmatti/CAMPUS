@@ -57,18 +57,18 @@ public class DashboardController {
     }
 
     private void updateRoleDisplay() {
-        String role = currentUser.getRole();
+        String role = currentUser.getRole(); // Might just say "STANDARD" now
         roleLabel.setText("Logged in as: " + currentUser.getEmail() + " (" + role + ")");
 
-        if (viewingAsSeller && role.equals("SELLER")) {
+        if (viewingAsSeller) {
             mainTabs.getSelectionModel().select(sellerTab);
             toggleRoleBtn.setText("Switch to Buyer");
         } else {
             mainTabs.getSelectionModel().select(buyerTab);
             toggleRoleBtn.setText("Switch to Seller");
-            // Hide seller tab if user is not a seller
-            sellerTab.setDisable(!role.equals("SELLER") && !role.equals("ADMIN"));
         }
+        // Enable seller tab for everyone
+        sellerTab.setDisable(false);
     }
 
     @FXML
@@ -85,10 +85,19 @@ public class DashboardController {
                 JsonNode auctions = auctionRestService.getActiveAuctions();
                 ObservableList<String> items = FXCollections.observableArrayList();
                 for (JsonNode a : auctions) {
+                    long auctionId = a.path("id").asLong();
+                    double displayPrice = a.path("price").asDouble();
+                    try {
+                        JsonNode bids = bidRestService.getBidsForAuction(auctionId);
+                        if (bids.isArray() && bids.size() > 0) {
+                            displayPrice = bids.get(0).path("amount").asDouble();
+                        }
+                    } catch (Exception ignore) {}
+
                     items.add(String.format("[ID:%d] %s — ₹%.0f  (%s)",
-                        a.path("id").asLong(),
+                        auctionId,
                         a.path("title").asText(),
-                        a.path("price").asDouble(),
+                        displayPrice,
                         a.path("status").asText()));
                 }
                 Platform.runLater(() -> auctionListView.setItems(items));
