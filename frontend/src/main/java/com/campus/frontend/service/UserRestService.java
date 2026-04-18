@@ -2,6 +2,8 @@ package com.campus.frontend.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.campus.frontend.model.User;
+import com.campus.frontend.config.AppConfig;
 
 import java.net.URI;
 import java.net.http.HttpClient;

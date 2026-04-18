@@ -11,7 +11,7 @@ import java.net.http.HttpResponse;
 
 public class AuctionRestService {
     
-    private final String BASE = AppConfig.auctionServiceUrl + "/api/auctions";
+    private final String BASE = AppConfig.auctionServiceUrl() + "/api/auctions";
     private final HttpClient http = HttpClient.newHttpClient();
     private final ObjectMapper mapper = new ObjectMapper().findAndRegisterModules();
     private final String token;
@@ -31,7 +31,7 @@ public class AuctionRestService {
 
     /** Returns auctions created by a specific seller */
     public JsonNode getMyAuctions(Long sellerId) throws Exception {
-        HttpRequest req = HttpRequest.newBuilder();
+        HttpRequest req = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/seller" + sellerId + "?size=50"))
                 .header("Authorization", "Bearer" + token)
                 .GET().build();

@@ -8,6 +8,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import com.campus.frontend.config.AppConfig;
 
 /**
  * REST client for the Bidding Service (port 8083).

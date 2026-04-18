@@ -1,6 +1,7 @@
 package com.campus.frontend.controller;
 
 import com.campus.frontend.CampusApp;
+import com.campus.frontend.model.User;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;

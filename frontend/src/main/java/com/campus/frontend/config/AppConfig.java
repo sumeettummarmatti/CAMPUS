@@ -16,9 +16,21 @@ public class AppConfig {
         }
     }
 
-    public static String userServiceUrl()    { return props.getProperty("user.service.url"); }
-    public static String auctionServiceUrl() { return props.getProperty("auction.service.url"); }
-    public static String biddingServiceUrl() { return props.getProperty("bidding.service.url"); }
-    public static String paymentServiceUrl() { return props.getProperty("payment.service.url"); }
-    public static String websocketUrl()      { return props.getProperty("websocket.url"); }
+    private static String resolveProperty(String key) {
+        String value = props.getProperty(key);
+        if (value != null && value.contains("${SERVICE_HOST_IP}")) {
+            String hostIp = System.getenv("SERVICE_HOST_IP");
+            if (hostIp == null || hostIp.isEmpty()) {
+                hostIp = "localhost";
+            }
+            value = value.replace("${SERVICE_HOST_IP}", hostIp);
+        }
+        return value;
+    }
+
+    public static String userServiceUrl()    { return resolveProperty("user.service.url"); }
+    public static String auctionServiceUrl() { return resolveProperty("auction.service.url"); }
+    public static String biddingServiceUrl() { return resolveProperty("bidding.service.url"); }
+    public static String paymentServiceUrl() { return resolveProperty("payment.service.url"); }
+    public static String websocketUrl()      { return resolveProperty("websocket.url"); }
 }
