@@ -2,7 +2,7 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import javafx.scene.text.Font?>
+<?import java.lang.Integer?>
 
 <BorderPane xmlns="http://javafx.com/javafx/17"
             xmlns:fx="http://javafx.com/fxml/1"
@@ -23,7 +23,7 @@
         </HBox>
     </top>
 
-    <!-- MAIN CONTENT (TabPane switches buyer/seller views) -->
+    <!-- MAIN CONTENT (TabPane switches buyer/seller/notifications) -->
     <center>
         <TabPane fx:id="mainTabs" tabClosingPolicy="UNAVAILABLE">
 
@@ -36,7 +36,7 @@
                         <Region HBox.hgrow="ALWAYS"/>
                         <Button text="Refresh" onAction="#onRefreshAuctions"/>
                     </HBox>
-                    <ListView fx:id="auctionListView" VBox.vgrow="ALWAYS" prefHeight="350"/>
+                    <ListView fx:id="auctionListView" VBox.vgrow="ALWAYS" prefHeight="300"/>
                     <Separator/>
                     <Label text="Place a Bid" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
                     <HBox spacing="10">
@@ -62,24 +62,59 @@
                     <GridPane hgap="10" vgap="8">
                         <Label text="Title:" GridPane.columnIndex="0" GridPane.rowIndex="0"/>
                         <TextField fx:id="newTitleField" GridPane.columnIndex="1" GridPane.rowIndex="0" prefWidth="200"/>
+
                         <Label text="Description:" GridPane.columnIndex="0" GridPane.rowIndex="1"/>
                         <TextField fx:id="newDescField" GridPane.columnIndex="1" GridPane.rowIndex="1" prefWidth="200"/>
+
                         <Label text="Starting price (₹):" GridPane.columnIndex="0" GridPane.rowIndex="2"/>
                         <TextField fx:id="newPriceField" GridPane.columnIndex="1" GridPane.rowIndex="2"/>
+
                         <Label text="Reserve price (₹):" GridPane.columnIndex="0" GridPane.rowIndex="3"/>
                         <TextField fx:id="newReserveField" GridPane.columnIndex="1" GridPane.rowIndex="3"/>
-                        <Label text="Start (yyyy-MM-ddTHH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
-                        <TextField fx:id="newStartField" promptText="2025-06-01T10:00" GridPane.columnIndex="1" GridPane.rowIndex="4"/>
-                        <Label text="End (yyyy-MM-ddTHH:mm):" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
-                        <TextField fx:id="newEndField" promptText="2025-06-01T18:00" GridPane.columnIndex="1" GridPane.rowIndex="5"/>
+
+                        <!-- Start datetime: date picker + hour + minute -->
+                        <Label text="Start date:" GridPane.columnIndex="0" GridPane.rowIndex="4"/>
+                        <HBox spacing="6" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                            <DatePicker fx:id="newStartDate" promptText="Pick start date" prefWidth="150"/>
+                            <Label text="HH:"/>
+                            <ComboBox fx:id="newStartHour" prefWidth="60"/>
+                            <Label text="MM:"/>
+                            <ComboBox fx:id="newStartMin" prefWidth="60"/>
+                        </HBox>
+
+                        <!-- End datetime: date picker + hour + minute -->
+                        <Label text="End date:" GridPane.columnIndex="0" GridPane.rowIndex="5"/>
+                        <HBox spacing="6" GridPane.columnIndex="1" GridPane.rowIndex="5">
+                            <DatePicker fx:id="newEndDate" promptText="Pick end date" prefWidth="150"/>
+                            <Label text="HH:"/>
+                            <ComboBox fx:id="newEndHour" prefWidth="60"/>
+                            <Label text="MM:"/>
+                            <ComboBox fx:id="newEndMin" prefWidth="60"/>
+                        </HBox>
                     </GridPane>
                     <Button text="Create &amp; Schedule Auction" onAction="#onCreateAuction"
                             style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 8 16;"/>
                     <Label fx:id="createStatusLabel" wrapText="true"/>
                     <Separator/>
                     <Label text="My Listed Auctions" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
-                    <ListView fx:id="myAuctionListView" prefHeight="200"/>
+                    <ListView fx:id="myAuctionListView" prefHeight="180"/>
                     <Button text="Refresh My Auctions" onAction="#onRefreshMyAuctions"/>
+                </VBox>
+            </Tab>
+
+            <!-- NOTIFICATIONS TAB -->
+            <Tab text="🔔 Notifications" fx:id="notifTab">
+                <VBox spacing="10">
+                    <padding><Insets top="15" left="20" right="20" bottom="15"/></padding>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="My Notifications" style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Refresh" onAction="#onRefreshNotifications"/>
+                    </HBox>
+                    <Label text="Outbid and won/lost status for all your bids."
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 12;"/>
+                    <ListView fx:id="notifListView" VBox.vgrow="ALWAYS" prefHeight="400"/>
+                    <Label fx:id="notifStatusLabel" wrapText="true" style="-fx-text-fill: #7f8c8d;"/>
                 </VBox>
             </Tab>
 
