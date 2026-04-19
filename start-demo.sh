@@ -20,6 +20,7 @@ echo "2. Compiling backend services..."
 mvn clean install -DskipTests
 
 echo "3. Starting microservices in the background..."
+export MAVEN_OPTS="-Djava.net.preferIPv4Stack=true"
 (cd backend/user-service && mvn spring-boot:run) > user-service.log 2>&1 &
 (cd backend/auction-service && mvn spring-boot:run) > auction-service.log 2>&1 &
 (cd backend/bidding-service && mvn spring-boot:run) > bidding-service.log 2>&1 &
