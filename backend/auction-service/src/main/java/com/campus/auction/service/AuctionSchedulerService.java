@@ -3,9 +3,12 @@ package com.campus.auction.service;
 import com.campus.auction.model.Auction;
 import com.campus.auction.model.AuctionStatus;
 import com.campus.auction.repository.AuctionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -21,26 +24,36 @@ import java.util.List;
  * - Activate SCHEDULED auctions when start time is reached
  * - End ACTIVE auctions when end time is reached
  */
-@Slf4j
 @Service
 @EnableScheduling
-@RequiredArgsConstructor
 @Transactional
 public class AuctionSchedulerService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuctionSchedulerService.class);
+
     private final AuctionRepository auctionRepository;
     private final AuctionService auctionService;
+    private final RestTemplate restTemplate;
 
     @Value("${services.bidding-service-url}")
     private String biddingServiceUrl;
-    
-    private final RestTemplate restTemplate;
+
+    @Value("${services.payment-service-url}")
+    private String paymentServiceUrl;
+
+    public AuctionSchedulerService(AuctionRepository auctionRepository,
+                                   AuctionService auctionService,
+                                   RestTemplate restTemplate) {
+        this.auctionRepository = auctionRepository;
+        this.auctionService    = auctionService;
+        this.restTemplate      = restTemplate;
+    }
 
     /**
      * Run every minute to activate scheduled auctions.
      * Transition: SCHEDULED → ACTIVE
      */
-    @Scheduled(fixedRate = 60000) // Run every 60 seconds
+    @Scheduled(fixedRate = 60000)
     public void activateScheduledAuctions() {
         log.info("Running scheduled task: activating scheduled auctions");
 
@@ -66,9 +79,9 @@ public class AuctionSchedulerService {
 
     /**
      * Run every minute to end active auctions.
-     * Transition: ACTIVE → ENDED
+     * Transition: ACTIVE → ENDED → CLOSED_SOLD or CLOSED_NO_SALE
      */
-    @Scheduled(fixedRate = 60000) // Run every 60 seconds
+    @Scheduled(fixedRate = 60000)
     public void endActiveAuctions() {
         log.info("Running scheduled task: ending active auctions");
 
@@ -87,18 +100,42 @@ public class AuctionSchedulerService {
                 auctionService.endAuction(auction.getId());
 
                 // Ask Bidding Service for the highest bid
-                String url = biddingServiceUrl + "/api/bids/auction/" + auction.getId();
-                try{
-                    // The bidding service returns a list
-                    com.fasterxml.jackson.databind.JsonNode[] bids = restTemplate.getForObject(url, com.fasterxml.jackson.databind.JsonNode[].class);
+                String bidsUrl = biddingServiceUrl + "/api/bids/auction/" + auction.getId();
+                try {
+                    com.fasterxml.jackson.databind.JsonNode[] bids =
+                        restTemplate.getForObject(bidsUrl, com.fasterxml.jackson.databind.JsonNode[].class);
 
-                    if (bids != null && bids.length > 0){
+                    if (bids != null && bids.length > 0) {
                         double highestBid = bids[0].get("amount").asDouble();
                         if (highestBid >= auction.getReservePrice()) {
                             auctionService.closeSold(auction.getId(), "Winner determined");
-                            // Tell binding service to mark winners/losers
+
+                            // Tell bidding service to mark winners/losers
                             restTemplate.postForEntity(
-                                biddingServiceUrl + "/api/bids/auction/" + auction.getId() + "/resolve", null, Void.class);
+                                biddingServiceUrl + "/api/bids/auction/" + auction.getId() + "/resolve",
+                                null, Void.class);
+
+                            // Initiate payment for the winner
+                            long winnerId = bids[0].get("buyerId").asLong();
+                            try {
+                                String paymentBody = String.format(
+                                    java.util.Locale.US,
+                                    "{\"auctionId\":%d,\"winnerId\":%d,\"sellerId\":%d,\"amount\":%.2f,\"paymentMethod\":\"CAMPUS_WALLET\"}",
+                                    auction.getId(), winnerId, auction.getSellerId(), highestBid
+                                );
+                                HttpHeaders headers = new HttpHeaders();
+                                headers.setContentType(MediaType.APPLICATION_JSON);
+                                HttpEntity<String> entity = new HttpEntity<>(paymentBody, headers);
+                                restTemplate.postForEntity(
+                                    paymentServiceUrl + "/api/payments/initiate",
+                                    entity, Void.class
+                                );
+                                log.info("Payment initiated for auction {}, winner {}, amount {}",
+                                    auction.getId(), winnerId, highestBid);
+                            } catch (Exception payEx) {
+                                log.warn("Could not initiate payment for auction {}: {}",
+                                    auction.getId(), payEx.getMessage());
+                            }
                         } else {
                             auctionService.closeNoSale(auction.getId(), "Reserve price not met");
                         }
@@ -106,9 +143,10 @@ public class AuctionSchedulerService {
                         auctionService.closeNoSale(auction.getId(), "No bids received");
                     }
                 } catch (Exception ex) {
-                    log.warn("Could not reach bidding service for action {}: {}", auction.getId(), ex.getMessage());
-                    auctionService.closeNoSale(auction.getId(), "No bids received");
-                }      
+                    log.warn("Could not reach bidding service for auction {}: {}",
+                        auction.getId(), ex.getMessage());
+                    auctionService.closeNoSale(auction.getId(), "Bidding service unavailable");
+                }
             } catch (Exception e) {
                 log.error("Error ending auction ID: {}", auction.getId(), e);
             }
@@ -116,15 +154,11 @@ public class AuctionSchedulerService {
     }
 
     /**
-     * Optional: Run daily cleanup/archival of closed auctions.
-     * Can be scheduled once per day at midnight.
+     * Daily cleanup/archival of closed auctions.
      */
-    @Scheduled(cron = "0 0 0 * * ?") // Every day at midnight
+    @Scheduled(cron = "0 0 0 * * ?")
     public void archiveClosedAuctions() {
         log.info("Running scheduled task: archiving closed auctions");
-
-        // TODO: Find all auctions closed more than X days ago
-        // TODO: Move to archive table or mark as archived
-        // TODO: This helps with database performance
+        // TODO: Find all auctions closed more than X days ago and archive them
     }
 }
