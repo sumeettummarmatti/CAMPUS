@@ -10,6 +10,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.beans.factory.annotation.Value;
+import java.util.Map;
 
 import java.util.List;
 
@@ -23,6 +25,9 @@ public class BidService {
     private final BidWebSocketHandler webSocketHandler;
     private final RestTemplate restTemplate;
 
+    @Value("${services.auction-service-url}")
+    private String auctionServiceUrl;
+
     public BidService(BidRepository bidRepository, BidWebSocketHandler webSocketHandler, RestTemplate restTemplate) {
         this.bidRepository = bidRepository;
         this.webSocketHandler = webSocketHandler;
@@ -32,6 +37,23 @@ public class BidService {
     public BidDTO placeBid(BidDTO dto) {
         log.info("Received bid placement request for auction {}, buyer {}, amount {}",
             dto.getAuctionId(), dto.getBuyerId(), dto.getAmount());
+
+        // 0. Ensure buyer is not the seller
+        String url = auctionServiceUrl + "/api/auctions/" + dto.getAuctionId();
+        try {
+            Map<String, Object> auction = restTemplate.getForObject(url, Map.class);
+            if (auction != null && auction.get("sellerId") != null) {
+                Long sellerId = Long.valueOf(auction.get("sellerId").toString());
+                if (dto.getBuyerId().equals(sellerId)) {
+                    throw new IllegalArgumentException("Sellers cannot bid on their own auctions");
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            throw e; // rethrow the business validation exception
+        } catch (Exception e) {
+            log.error("Failed to fetch auction details for validation", e);
+            throw new IllegalArgumentException("Unable to validate auction: " + e.getMessage());
+        }
 
         // 1. Ensure new bid is higher than current highest bid
         List<Bid> bids = bidRepository.findByAuctionIdOrderByAmountDesc(dto.getAuctionId());
