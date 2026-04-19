@@ -45,6 +45,42 @@ public class PaymentRestService {
         http.send(req, HttpResponse.BodyHandlers.ofString());
     }
 
+    /** Simulates a buyer paying for a PENDING transaction */
+    public void payTransaction(Long transactionId) throws Exception {
+        payWithMethod(transactionId, "CAMPUS_WALLET");
+    }
+
+    public void payWithMethod(Long transactionId, String method) throws Exception {
+        // Step 1: Submit to mock gateway (moves PENDING -> PAYMENT_PROCESSING)
+        // We'll treat the method name as a ref for charging
+        HttpRequest req1 = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/confirm"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        http.send(req1, HttpResponse.BodyHandlers.ofString());
+
+        // Step 2: Simulate immediate gateway success by moving into Escrow
+        HttpRequest req2 = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/hold"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        http.send(req2, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /** Initiates a payment for a won auction */
+    public JsonNode initiatePayment(Long auctionId, Long winnerId, Long sellerId, double amount, String method) throws Exception {
+        String body = String.format(
+            "{\"auctionId\":%d, \"winnerId\":%d, \"sellerId\":%d, \"amount\":%.2f, \"paymentMethod\":\"%s\"}",
+            auctionId, winnerId, sellerId, amount, method
+        );
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/initiate"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.ofString(body)).build();
+        return mapper.readTree(http.send(req, HttpResponse.BodyHandlers.ofString()).body());
+    }
+
     /** Open a dispute */
     public void openDispute(Long transactionId, String reason) throws Exception {
         String body = "{\"reason\":\"" + reason + "\"}";

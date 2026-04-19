@@ -6,5 +6,7 @@ package com.campus.payment.model;
 public enum PaymentMethod {
     CAMPUS_WALLET,
     CASH_ON_DELIVERY,
-    UPI
+    UPI,
+    CREDIT_CARD,
+    NET_BANKING
 }

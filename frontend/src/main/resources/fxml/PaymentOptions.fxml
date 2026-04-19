@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox prefWidth="400.0" spacing="15.0" style="-fx-background-color: #f4f7f6; -fx-padding: 30;" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.campus.frontend.controller.PaymentOptionsController">
+    <children>
+        <Label text="Congratulations! You Won" textFill="#2d5e2d">
+            <font>
+                <Font name="System Bold" size="22.0" />
+            </font>
+        </Label>
+        
+        <Label fx:id="auctionDetailsLabel" text="Auction # — ₹0.00" textFill="#555555">
+            <font>
+                <Font size="16.0" />
+            </font>
+        </Label>
+
+        <VBox spacing="10.0" style="-fx-background-color: white; -fx-padding: 20; -fx-border-color: #ddd; -fx-border-radius: 5; -fx-background-radius: 5;">
+            <children>
+                <Label text="Select Payment Method:">
+                    <font>
+                        <Font name="System Bold" size="14.0" />
+                    </font>
+                </Label>
+                <RadioButton fx:id="upiRadio" text="UPI (Dummy Scan)">
+                    <toggleGroup>
+                        <ToggleGroup fx:id="paymentGroup" />
+                    </toggleGroup>
+                </RadioButton>
+                <RadioButton fx:id="walletRadio" text="CAMPUS Wallet" toggleGroup="$paymentGroup" selected="true"/>
+                <RadioButton fx:id="cashRadio" text="Cash on Delivery" toggleGroup="$paymentGroup" />
+                <RadioButton fx:id="cardRadio" text="Credit / Debit Card" toggleGroup="$paymentGroup" />
+                <RadioButton fx:id="netBankRadio" text="Net Banking" toggleGroup="$paymentGroup" />
+            </children>
+        </VBox>
+
+        <HBox spacing="10.0" alignment="CENTER_RIGHT">
+            <Button fx:id="cancelBtn" onAction="#onCancel" text="Pay Later" style="-fx-background-color: #e0e0e0;" />
+            <Button fx:id="payBtn" onAction="#onPay" text="Confirm Payment" style="-fx-background-color: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;" />
+        </HBox>
+        
+        <Label fx:id="statusLabel" wrapText="true" />
+    </children>
+</VBox>
