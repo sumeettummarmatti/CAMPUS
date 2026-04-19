@@ -37,20 +37,35 @@ public class BidWebSocketHandler extends TextWebSocketHandler {
     }
 
     public void broadcastBidUpdate(Long auctionId, Double newHighestBid) {
+        String message = String.format(
+            "{\"type\":\"NEW_BID\",\"auctionId\":%d,\"newHighestBid\":%.2f}", auctionId, newHighestBid
+        );
+        broadcastMessage(auctionId, message);
+    }
+
+    public void broadcastMessage(Long auctionId, String rawJsonMessage) {
         String key = String.valueOf(auctionId);
         Set<WebSocketSession> sessions = auctionSessions.getOrDefault(key, Set.of());
 
-        String message = String.format(
-            "{\"auctionId\":%d,\"newHighestBid\":%.2f}", auctionId, newHighestBid
-        );
-
         for (WebSocketSession session : sessions) {
-            if (session.isOpen()) {
-                try {
-                    session.sendMessage(new TextMessage(message));
-                } catch (IOException e) {
-                    System.err.printf("[WS] Send failed for session %s%n", session.getId());
-                }
+            sendSafely(session, rawJsonMessage);
+        }
+    }
+
+    public void broadcastToAll(String rawJsonMessage) {
+        auctionSessions.values().forEach(sessions -> {
+            for (WebSocketSession session : sessions) {
+                sendSafely(session, rawJsonMessage);
+            }
+        });
+    }
+
+    private void sendSafely(WebSocketSession session, String message) {
+        if (session != null && session.isOpen()) {
+            try {
+                session.sendMessage(new TextMessage(message));
+            } catch (IOException e) {
+                System.err.printf("[WS] Send failed for session %s: %s%n", session.getId(), e.getMessage());
             }
         }
     }

@@ -14,6 +14,7 @@ import javafx.scene.control.*;
 public class ProfileController {
 
     @FXML private Label userInfoLabel;
+    @FXML private Label balanceLabel;
     @FXML private Label earningsLabel;
     @FXML private Label spendingLabel;
     @FXML private ListView<String> earningsListView;
@@ -74,8 +75,10 @@ public class ProfileController {
 
                 final double finalEarned = totalEarned;
                 final double finalSpent  = totalSpent;
+                final double finalBalance = 1000.0 + finalEarned - finalSpent;
 
                 Platform.runLater(() -> {
+                    balanceLabel.setText(String.format("₹%.2f", finalBalance));
                     earningsLabel.setText(String.format("₹%.2f", finalEarned));
                     spendingLabel.setText(String.format("₹%.2f", finalSpent));
                     earningsListView.setItems(earnItems);
@@ -125,6 +128,29 @@ public class ProfileController {
                     });
                 } catch (Exception ex) {
                     Platform.runLater(() -> actionStatusLabel.setText("Error: " + ex.getMessage()));
+                }
+            }).start();
+        } catch (NumberFormatException ex) {
+            actionStatusLabel.setText("Enter a valid transaction ID.");
+        }
+    }
+
+    @FXML
+    public void onPayNow(ActionEvent e) {
+        try {
+            Long txId = Long.parseLong(confirmTxIdField.getText());
+            actionStatusLabel.setStyle("-fx-text-fill: orange;");
+            actionStatusLabel.setText("Processing payment for TX#" + txId + "...");
+            new Thread(() -> {
+                try {
+                    paymentRestService.payTransaction(txId);
+                    Platform.runLater(() -> {
+                        actionStatusLabel.setStyle("-fx-text-fill: green;");
+                        actionStatusLabel.setText("Payment successful! Funds moved to Escrow for TX#" + txId);
+                        loadPaymentData();
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> actionStatusLabel.setText("Error processing payment: " + ex.getMessage()));
                 }
             }).start();
         } catch (NumberFormatException ex) {

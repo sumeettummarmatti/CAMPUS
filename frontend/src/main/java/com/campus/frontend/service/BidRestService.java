@@ -88,4 +88,22 @@ public class BidRestService {
         );
         return mapper.readTree(response.body());
     }
+
+    /**
+     * Manually trigger auction resolution (declares winner, etc.).
+     */
+    public void resolveAuction(Long auctionId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(API_URL + "/auction/" + auctionId + "/resolve"))
+            .header("Authorization", "Bearer " + authToken)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+        HttpResponse<String> response = httpClient.send(
+            request, HttpResponse.BodyHandlers.ofString()
+        );
+        if (response.statusCode() != 200) {
+            throw new Exception("Resolution failed: " + response.body());
+        }
+    }
 }

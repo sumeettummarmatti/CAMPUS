@@ -18,12 +18,16 @@
 
     <!-- Money summary cards -->
     <HBox spacing="20">
+        <VBox style="-fx-background-color: #ebf5fb; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
+            <Label text="Wallet Balance" style="-fx-font-weight: bold; -fx-text-fill: #154360;"/>
+            <Label fx:id="balanceLabel" style="-fx-font-size: 22; -fx-text-fill: #2980b9;"/>
+        </VBox>
         <VBox style="-fx-background-color: #eafaf1; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
-            <Label text="Total Earned (as Seller)" style="-fx-font-weight: bold; -fx-text-fill: #1a7a4a;"/>
+            <Label text="Total Earned" style="-fx-font-weight: bold; -fx-text-fill: #1a7a4a;"/>
             <Label fx:id="earningsLabel" style="-fx-font-size: 22; -fx-text-fill: #27ae60;"/>
         </VBox>
         <VBox style="-fx-background-color: #fef9e7; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
-            <Label text="Total Spent (as Buyer)" style="-fx-font-weight: bold; -fx-text-fill: #7d6608;"/>
+            <Label text="Total Spent" style="-fx-font-weight: bold; -fx-text-fill: #7d6608;"/>
             <Label fx:id="spendingLabel" style="-fx-font-size: 22; -fx-text-fill: #f39c12;"/>
         </VBox>
     </HBox>
@@ -36,6 +40,8 @@
                 <ListView fx:id="spendingListView" prefHeight="200"/>
                 <HBox spacing="10">
                     <TextField fx:id="confirmTxIdField" promptText="Transaction ID" prefWidth="140"/>
+                    <Button text="Pay Now" onAction="#onPayNow"
+                            style="-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold;"/>
                     <Button text="Confirm Delivery" onAction="#onConfirmDelivery"
                             style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
                     <TextField fx:id="disputeReasonField" promptText="Dispute reason" HBox.hgrow="ALWAYS"/>
