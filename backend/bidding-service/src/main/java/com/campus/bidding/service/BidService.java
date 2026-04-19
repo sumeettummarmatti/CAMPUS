@@ -5,119 +5,110 @@ import com.campus.bidding.model.Bid;
 import com.campus.bidding.model.BidStatus;
 import com.campus.bidding.repository.BidRepository;
 import com.campus.bidding.websocket.BidWebSocketHandler;
-import lombok.RequiredArgsConstructor;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
+@Transactional
 public class BidService {
 
-    private static final double MIN_INCREMENT = 1.0;
+    private static final Logger log = LoggerFactory.getLogger(BidService.class);
 
     private final BidRepository bidRepository;
-    private final NotificationService notificationService;
     private final BidWebSocketHandler webSocketHandler;
+    private final RestTemplate restTemplate;
 
-    @Transactional
+    public BidService(BidRepository bidRepository, BidWebSocketHandler webSocketHandler, RestTemplate restTemplate) {
+        this.bidRepository = bidRepository;
+        this.webSocketHandler = webSocketHandler;
+        this.restTemplate = restTemplate;
+    }
+
     public BidDTO placeBid(BidDTO dto) {
+        log.info("Received bid placement request for auction {}, buyer {}, amount {}",
+            dto.getAuctionId(), dto.getBuyerId(), dto.getAmount());
 
-        // Find whoever is currently leading this auction
-        Optional<Bid> currentLeader = bidRepository
-            .findTopByAuctionIdAndStatusOrderByAmountDesc(
-                dto.getAuctionId(), BidStatus.LEADING
-            );
+        // 1. Ensure new bid is higher than current highest bid
+        List<Bid> bids = bidRepository.findByAuctionIdOrderByAmountDesc(dto.getAuctionId());
+        if (!bids.isEmpty()) {
+            Bid highest = bids.get(0);
+            if (dto.getAmount() <= highest.getAmount()) {
+                throw new IllegalArgumentException("Bid amount " + dto.getAmount() +
+                    " must be greater than current highest bid " + highest.getAmount());
+            }
 
-        double currentHighest = currentLeader.map(Bid::getAmount).orElse(0.0);
-
-        // Reject if the new amount doesn't beat the minimum increment
-        if (dto.getAmount() < currentHighest + MIN_INCREMENT) {
-            throw new IllegalArgumentException(String.format(
-                "Bid too low. Minimum required: %.2f", currentHighest + MIN_INCREMENT
-            ));
+            // Mark the old highest as OUTBID
+            highest.setStatus(BidStatus.OUTBID);
+            bidRepository.save(highest);
         }
 
-        // Reject if this buyer is already leading
-        if (bidRepository.existsByAuctionIdAndBuyerIdAndStatus(
-                dto.getAuctionId(), dto.getBuyerId(), BidStatus.LEADING)) {
-            throw new IllegalStateException("You are already the highest bidder.");
-        }
-
-        Bid newBid = Bid.builder()
+        // 2. Insert new bid
+        Bid bid = Bid.builder()
             .auctionId(dto.getAuctionId())
             .buyerId(dto.getBuyerId())
             .amount(dto.getAmount())
-            .status(BidStatus.ACCEPTED)
+            .status(BidStatus.LEADING)
             .build();
 
-        try {
-            // Demote the previous leader
-            currentLeader.ifPresent(prev -> {
-                prev.setStatus(BidStatus.OUTBID);
-                bidRepository.save(prev);
-                notificationService.sendOutbidNotification(
-                    prev.getBuyerId(), prev.getAuctionId(), dto.getAmount()
-                );
-            });
+        Bid saved = bidRepository.save(bid);
 
-            // Save and promote the new bid
-            newBid.setStatus(BidStatus.LEADING);
-            Bid saved = bidRepository.save(newBid);
+        BidDTO response = mapToDTO(saved);
 
-            notificationService.sendBidConfirmation(
-                saved.getBuyerId(), saved.getAuctionId(), saved.getAmount()
-            );
-            // Broadcast live update to all WebSocket clients watching this auction
-            webSocketHandler.broadcastBidUpdate(saved.getAuctionId(), saved.getAmount());
+        // 3. Broadcast new highest bid to WebSocket listeners
+        webSocketHandler.broadcastBidUpdate(dto.getAuctionId(), dto.getAmount());
 
-            return toDTO(saved);
-
-        } catch (ObjectOptimisticLockingFailureException e) {
-            // Two bids arrived at exactly the same time.
-            // The @Version field caught the conflict — reject the loser cleanly.
-            throw new IllegalStateException(
-                "Another bid was placed at the same time. Please try again."
-            );
-        }
+        return response;
     }
 
-    @Transactional
-    public void resolveAuctionEnd(Long auctionId) {
-        List<Bid> allBids = bidRepository.findByAuctionIdOrderByAmountDesc(auctionId);
-        boolean winnerFound = false;
-
-        for (Bid bid : allBids) {
-            if (!winnerFound && bid.getStatus() == BidStatus.LEADING) {
-                bid.setStatus(BidStatus.WON);
-                bidRepository.save(bid);
-                notificationService.sendWinNotification(
-                    bid.getBuyerId(), auctionId, bid.getAmount()
-                );
-                winnerFound = true;
-            } else if (bid.getStatus() == BidStatus.OUTBID
-                    || bid.getStatus() == BidStatus.LEADING) {
-                bid.setStatus(BidStatus.LOST);
-                bidRepository.save(bid);
-                notificationService.sendLossNotification(bid.getBuyerId(), auctionId);
-            }
-        }
-    }
-
+    @Transactional(readOnly = true)
     public List<BidDTO> getBidsForAuction(Long auctionId) {
         return bidRepository.findByAuctionIdOrderByAmountDesc(auctionId)
-            .stream().map(this::toDTO).toList();
+            .stream().map(this::mapToDTO).toList();
     }
 
+    @Transactional(readOnly = true)
     public List<BidDTO> getBidsByBuyer(Long buyerId) {
         return bidRepository.findByBuyerIdOrderByPlacedAtDesc(buyerId)
-            .stream().map(this::toDTO).toList();
+            .stream().map(this::mapToDTO).toList();
     }
 
-    private BidDTO toDTO(Bid bid) {
+    /**
+     * Resolves the ending of an auction. The highest LEADING bid becomes WON,
+     * and any others become LOST (if they weren't already OUTBID).
+     */
+    public void resolveAuctionEnd(Long auctionId) {
+        log.info("Resolving end of auction {}", auctionId);
+        List<Bid> bids = bidRepository.findByAuctionIdOrderByAmountDesc(auctionId);
+        if (bids.isEmpty()) {
+            log.info("No bids to resolve for auction {}", auctionId);
+            return;
+        }
+
+        // The first bid is the highest
+        Bid winner = bids.get(0);
+        winner.setStatus(BidStatus.WON);
+        bidRepository.save(winner);
+        log.info("Bid {} declared WON for auction {}", winner.getId(), auctionId);
+
+        // All other bids are LOST or OUTBID
+        for (int i = 1; i < bids.size(); i++) {
+            Bid loser = bids.get(i);
+            if (loser.getStatus() != BidStatus.OUTBID) {
+                loser.setStatus(BidStatus.LOST);
+                bidRepository.save(loser);
+            }
+        }
+        
+        // Broadcast auction end (the previous broadcastBidUpdate only takes an amount, so we'd need to change it or leave it)
+        // Ignoring full JSON broadcast since the WebSocketHandler only accepts (Long, Double) at the moment.
+    }
+
+    private BidDTO mapToDTO(Bid bid) {
         return BidDTO.builder()
             .id(bid.getId())
             .auctionId(bid.getAuctionId())

@@ -3,8 +3,8 @@ package com.campus.auction.controller;
 import com.campus.auction.dto.AuctionDTO;
 import com.campus.auction.model.AuctionStatus;
 import com.campus.auction.service.AuctionService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,13 +18,17 @@ import jakarta.validation.Valid;
  * 
  * Base path: /api/auctions
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/auctions")
-@RequiredArgsConstructor
 public class AuctionController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
+
     private final AuctionService auctionService;
+
+    public AuctionController(AuctionService auctionService) {
+        this.auctionService = auctionService;
+    }
 
     /**
      * Create a new auction (DRAFT state).

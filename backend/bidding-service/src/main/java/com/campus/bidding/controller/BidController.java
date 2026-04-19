@@ -3,7 +3,6 @@ package com.campus.bidding.controller;
 import com.campus.bidding.dto.BidDTO;
 import com.campus.bidding.service.BidService;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,10 +10,13 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/bids")
-@RequiredArgsConstructor
 public class BidController {
 
     private final BidService bidService;
+
+    public BidController(BidService bidService) {
+        this.bidService = bidService;
+    }
 
     /** POST /api/bids — place a new bid */
     @PostMapping
