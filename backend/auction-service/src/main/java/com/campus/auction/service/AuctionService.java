@@ -23,9 +23,14 @@ public class AuctionService {
     private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
 
     private final AuctionRepository auctionRepository;
+    private final org.springframework.web.client.RestTemplate restTemplate;
 
-    public AuctionService(AuctionRepository auctionRepository) {
+    @org.springframework.beans.factory.annotation.Value("${services.bidding-service-url}")
+    private String biddingServiceUrl;
+
+    public AuctionService(AuctionRepository auctionRepository, org.springframework.web.client.RestTemplate restTemplate) {
         this.auctionRepository = auctionRepository;
+        this.restTemplate = restTemplate;
     }
 
     /**
@@ -90,6 +95,15 @@ public class AuctionService {
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} scheduled successfully, start time: {}", auctionId, auction.getStartTime());
 
+        // Broadcast to bidding-service
+        try {
+            String msg = String.format("⏳ NEW AUCTION SCHEDULED: '%s' starting at %s", 
+                saved.getTitle(), saved.getStartTime().toString());
+            restTemplate.postForObject(biddingServiceUrl + "/api/bids/broadcast", msg, String.class);
+        } catch (Exception e) {
+            log.error("Failed to broadcast auction scheduling", e);
+        }
+
         return convertToDTO(saved);
     }
 
@@ -115,6 +129,15 @@ public class AuctionService {
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} is now ACTIVE, accepting bids until: {}", auctionId, auction.getEndTime());
 
+        // Broadcast to bidding-service
+        try {
+            String msg = String.format("🔥 AUCTION NOW ACTIVE: '%s' (ID: %d)", 
+                saved.getTitle(), saved.getId());
+            restTemplate.postForObject(biddingServiceUrl + "/api/bids/broadcast", msg, String.class);
+        } catch (Exception e) {
+            log.error("Failed to broadcast auction activation", e);
+        }
+
         return convertToDTO(saved);
     }
 
@@ -139,6 +162,60 @@ public class AuctionService {
 
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} has ENDED at: {}", auctionId, auction.getEndedAt());
+
+        return convertToDTO(saved);
+    }
+
+    /**
+     * Terminate an auction early (manual ending by seller).
+     */
+    public AuctionDTO terminateEarly(Long auctionId, Long sellerId) {
+        log.info("Terminating auction {} early by seller {}", auctionId, sellerId);
+
+        Auction auction = getAuctionOrThrow(auctionId);
+
+        if (auction.getStatus() != AuctionStatus.ACTIVE) {
+            throw new IllegalStateException("Only ACTIVE auctions can be terminated early");
+        }
+
+        if (!auction.getSellerId().equals(sellerId)) {
+            throw new IllegalArgumentException("Only the seller can terminate this auction");
+        }
+
+        auction.setStatus(AuctionStatus.ENDED);
+        auction.setEndedAt(LocalDateTime.now());
+        auction.setClosureReason("Terminated early by seller");
+
+        Auction saved = auctionRepository.save(auction);
+        log.info("Auction {} terminated early at: {}", auctionId, auction.getEndedAt());
+
+        return convertToDTO(saved);
+    }
+
+    /**
+     * Extend an auction end time.
+     */
+    public AuctionDTO extendAuction(Long auctionId, int minutes) {
+        log.info("Extending auction {} by {} minutes", auctionId, minutes);
+        Auction auction = getAuctionOrThrow(auctionId);
+
+        if (auction.getStatus() != AuctionStatus.ACTIVE) {
+            log.warn("Attempted to extend non-active auction {}", auctionId);
+            return convertToDTO(auction);
+        }
+
+        auction.setEndTime(auction.getEndTime().plusMinutes(minutes));
+        Auction saved = auctionRepository.save(auction);
+        log.info("Auction {} extended. New end time: {}", auctionId, saved.getEndTime());
+
+        // Broadcast to bidding-service
+        try {
+            String msg = String.format("⏰ TIME EXTENDED! Auction #%d '%s' extended by %d mins (New end: %02d:%02d)", 
+                saved.getId(), saved.getTitle(), minutes, saved.getEndTime().getHour(), saved.getEndTime().getMinute());
+            restTemplate.postForObject(biddingServiceUrl + "/api/bids/broadcast", msg, String.class);
+        } catch (Exception e) {
+            log.error("Failed to broadcast time extension", e);
+        }
 
         return convertToDTO(saved);
     }

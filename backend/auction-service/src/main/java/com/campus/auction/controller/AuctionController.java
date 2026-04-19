@@ -213,6 +213,40 @@ public class AuctionController {
     }
 
     /**
+     * Terminate an auction early (Manual closure by seller).
+     * POST /api/auctions/{id}/terminate-early
+     */
+    @PostMapping("/{id}/terminate-early")
+    public ResponseEntity<AuctionDTO> terminateEarly(
+            @PathVariable Long id, 
+            @RequestParam Long sellerId) {
+        log.info("Early termination request for auction {} by seller {}", id, sellerId);
+        try {
+            return ResponseEntity.ok(auctionService.terminateEarly(id, sellerId));
+        } catch (Exception e) {
+            log.error("Termination failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * Extend an auction end time.
+     * POST /api/auctions/{id}/extend?minutes=2
+     */
+    @PostMapping("/{id}/extend")
+    public ResponseEntity<AuctionDTO> extendAuction(
+            @PathVariable Long id, 
+            @RequestParam(defaultValue = "1") int minutes) {
+        log.info("Extension request for auction {} by {} mins", id, minutes);
+        try {
+            return ResponseEntity.ok(auctionService.extendAuction(id, minutes));
+        } catch (Exception e) {
+            log.error("Extension failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
      * Close an auction as SOLD (winner found, reserve met).
      * POST /api/auctions/{auctionId}/close-sold
      */
@@ -243,7 +277,8 @@ public class AuctionController {
             @RequestParam(required = false) String reason) {
         log.info("Closing auction as NO_SALE: {}", auctionId);
         try {
-            AuctionDTO closed = auctionService.closeNoSale(auctionId, reason != null ? reason : "No bids received or reserve not met");
+            AuctionDTO closed = auctionService.closeNoSale(auctionId,
+                    reason != null ? reason : "No bids received or reserve not met");
             return ResponseEntity.ok(closed);
         } catch (IllegalArgumentException e) {
             log.warn("Auction not found: {}", auctionId);
@@ -264,7 +299,8 @@ public class AuctionController {
             @RequestParam(required = false) String reason) {
         log.info("Cancelling auction: {}", auctionId);
         try {
-            AuctionDTO cancelled = auctionService.cancelAuction(auctionId, reason != null ? reason : "Cancelled by seller");
+            AuctionDTO cancelled = auctionService.cancelAuction(auctionId,
+                    reason != null ? reason : "Cancelled by seller");
             return ResponseEntity.ok(cancelled);
         } catch (IllegalArgumentException e) {
             log.warn("Auction not found: {}", auctionId);
