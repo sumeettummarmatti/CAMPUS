@@ -4,26 +4,29 @@ import com.campus.auction.dto.AuctionDTO;
 import com.campus.auction.model.Auction;
 import com.campus.auction.model.AuctionStatus;
 import com.campus.auction.repository.AuctionRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
-import java.util.Optional;
 
 /**
  * Service layer for Auction business logic.
  * Handles CRUD operations, validation, and lifecycle state transitions.
  */
-@Slf4j
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class AuctionService {
 
+    private static final Logger log = LoggerFactory.getLogger(AuctionService.class);
+
     private final AuctionRepository auctionRepository;
+
+    public AuctionService(AuctionRepository auctionRepository) {
+        this.auctionRepository = auctionRepository;
+    }
 
     /**
      * Create a new auction (initial DRAFT state).
@@ -32,24 +35,18 @@ public class AuctionService {
     public AuctionDTO createAuction(AuctionDTO auctionDTO) {
         log.info("Creating new auction: {}", auctionDTO.getTitle());
 
-        // Convert DTO to entity
-        Auction auction = Auction.builder()
-                .title(auctionDTO.getTitle())
-                .description(auctionDTO.getDescription())
-                .price(auctionDTO.getPrice())
-                .reservePrice(auctionDTO.getReservePrice())
-                .imageUrl(auctionDTO.getImageUrl())
-                .sellerId(auctionDTO.getSellerId())
-                .startTime(auctionDTO.getStartTime())
-                .endTime(auctionDTO.getEndTime())
-                .status(AuctionStatus.DRAFT)
-                .build();
+        Auction auction = new Auction();
+        auction.setTitle(auctionDTO.getTitle());
+        auction.setDescription(auctionDTO.getDescription());
+        auction.setPrice(auctionDTO.getPrice());
+        auction.setReservePrice(auctionDTO.getReservePrice());
+        auction.setImageUrl(auctionDTO.getImageUrl());
+        auction.setSellerId(auctionDTO.getSellerId());
+        auction.setStartTime(auctionDTO.getStartTime());
+        auction.setEndTime(auctionDTO.getEndTime());
+        auction.setStatus(AuctionStatus.DRAFT);
 
-        // Validate before persistence
         auction.validateForCreation();
-
-        // TODO: Call User Service to verify seller is verified
-        // TODO: If seller not verified, throw 403 Forbidden
 
         Auction saved = auctionRepository.save(auction);
         log.info("Auction created successfully with ID: {}", saved.getId());
@@ -59,13 +56,10 @@ public class AuctionService {
 
     /**
      * Validate auction fields before scheduling.
-     * Returns true if valid, throws exception if invalid.
      */
     public boolean validateAuction(Long auctionId) {
         log.info("Validating auction: {}", auctionId);
-
         Auction auction = getAuctionOrThrow(auctionId);
-
         try {
             auction.validateForCreation();
             log.info("Auction {} validation passed", auctionId);
@@ -78,7 +72,6 @@ public class AuctionService {
 
     /**
      * Schedule an auction (transition from DRAFT to SCHEDULED).
-     * Must pass validation and seller must be verified.
      */
     public AuctionDTO scheduleAuction(Long auctionId) {
         log.info("Scheduling auction: {}", auctionId);
@@ -89,11 +82,7 @@ public class AuctionService {
             throw new IllegalStateException("Only DRAFT auctions can be scheduled");
         }
 
-        // Validate before scheduling
         auction.validateForCreation();
-
-        // TODO: Verify seller with User Service
-        // checkSellerVerified(auction.getSellerId());
 
         auction.setStatus(AuctionStatus.SCHEDULED);
         auction.setScheduledAt(LocalDateTime.now());
@@ -106,7 +95,6 @@ public class AuctionService {
 
     /**
      * Activate an auction (transition from SCHEDULED to ACTIVE).
-     * Called by scheduler when start time is reached.
      */
     public AuctionDTO activateAuction(Long auctionId) {
         log.info("Activating auction: {}", auctionId);
@@ -127,14 +115,11 @@ public class AuctionService {
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} is now ACTIVE, accepting bids until: {}", auctionId, auction.getEndTime());
 
-        // TODO: Notify all interested buyers via email
-
         return convertToDTO(saved);
     }
 
     /**
      * End an auction (transition from ACTIVE to ENDED).
-     * Called by scheduler when end time is reached.
      */
     public AuctionDTO endAuction(Long auctionId) {
         log.info("Ending auction: {}", auctionId);
@@ -154,11 +139,6 @@ public class AuctionService {
 
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} has ENDED at: {}", auctionId, auction.getEndedAt());
-
-        // TODO: Retrieve highest bid from Bidding Service
-        // TODO: If highest bid exists and >= reserve price → CLOSED_SOLD
-        //       else → CLOSED_NO_SALE
-        // TODO: Notify seller and winner/losers via email
 
         return convertToDTO(saved);
     }
@@ -181,8 +161,6 @@ public class AuctionService {
 
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} closed as SOLD", auctionId);
-
-        // TODO: Trigger payment processing via Payment Service
 
         return convertToDTO(saved);
     }
@@ -210,7 +188,7 @@ public class AuctionService {
     }
 
     /**
-     * Cancel an auction (can be called from any state except already closed).
+     * Cancel an auction (can be called from any non-closed state).
      */
     public AuctionDTO cancelAuction(Long auctionId, String reason) {
         log.info("Cancelling auction: {}", auctionId);
@@ -227,8 +205,6 @@ public class AuctionService {
 
         Auction saved = auctionRepository.save(auction);
         log.info("Auction {} cancelled", auctionId);
-
-        // TODO: Notify all bidders that auction is cancelled
 
         return convertToDTO(saved);
     }
@@ -307,7 +283,6 @@ public class AuctionService {
         auction.setStartTime(auctionDTO.getStartTime());
         auction.setEndTime(auctionDTO.getEndTime());
 
-        // Validate updated values
         auction.validateForCreation();
 
         Auction saved = auctionRepository.save(auction);
@@ -316,9 +291,6 @@ public class AuctionService {
         return convertToDTO(saved);
     }
 
-    /**
-     * Helper method to get auction or throw 404.
-     */
     private Auction getAuctionOrThrow(Long auctionId) {
         return auctionRepository.findById(auctionId)
                 .orElseThrow(() -> {
@@ -327,28 +299,25 @@ public class AuctionService {
                 });
     }
 
-    /**
-     * Convert Auction entity to DTO.
-     */
     private AuctionDTO convertToDTO(Auction auction) {
-        return AuctionDTO.builder()
-                .id(auction.getId())
-                .title(auction.getTitle())
-                .description(auction.getDescription())
-                .price(auction.getPrice())
-                .reservePrice(auction.getReservePrice())
-                .imageUrl(auction.getImageUrl())
-                .sellerId(auction.getSellerId())
-                .startTime(auction.getStartTime())
-                .endTime(auction.getEndTime())
-                .status(auction.getStatus())
-                .createdAt(auction.getCreatedAt())
-                .updatedAt(auction.getUpdatedAt())
-                .scheduledAt(auction.getScheduledAt())
-                .activatedAt(auction.getActivatedAt())
-                .endedAt(auction.getEndedAt())
-                .closedAt(auction.getClosedAt())
-                .closureReason(auction.getClosureReason())
-                .build();
+        AuctionDTO dto = new AuctionDTO();
+        dto.setId(auction.getId());
+        dto.setTitle(auction.getTitle());
+        dto.setDescription(auction.getDescription());
+        dto.setPrice(auction.getPrice());
+        dto.setReservePrice(auction.getReservePrice());
+        dto.setImageUrl(auction.getImageUrl());
+        dto.setSellerId(auction.getSellerId());
+        dto.setStartTime(auction.getStartTime());
+        dto.setEndTime(auction.getEndTime());
+        dto.setStatus(auction.getStatus());
+        dto.setCreatedAt(auction.getCreatedAt());
+        dto.setUpdatedAt(auction.getUpdatedAt());
+        dto.setScheduledAt(auction.getScheduledAt());
+        dto.setActivatedAt(auction.getActivatedAt());
+        dto.setEndedAt(auction.getEndedAt());
+        dto.setClosedAt(auction.getClosedAt());
+        dto.setClosureReason(auction.getClosureReason());
+        return dto;
     }
 }
