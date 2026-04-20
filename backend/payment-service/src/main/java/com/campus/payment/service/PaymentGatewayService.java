@@ -2,9 +2,12 @@ package com.campus.payment.service;
 
 import com.campus.payment.dto.PaymentDTO;
 import com.campus.payment.dto.PaymentRequest;
+import com.campus.payment.model.PaymentMethod;
 import com.campus.payment.model.Transaction;
 import com.campus.payment.model.TransactionStatus;
 import com.campus.payment.repository.TransactionRepository;
+import com.campus.payment.service.paymentmode.PaymentProcessor;
+import com.campus.payment.service.paymentmode.PaymentProcessorFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,13 +19,20 @@ public class PaymentGatewayService {
 
     private final TransactionRepository transactionRepository;
     private final TransactionQueryService transactionQueryService;
-    private final IPaymentGateway gateway;
+    private final EscrowService escrowService;
+    private final PaymentProcessorFactory paymentProcessorFactory;
+    private final PaymentUserSyncService paymentUserSyncService;
 
     public PaymentGatewayService(TransactionRepository transactionRepository,
-            TransactionQueryService transactionQueryService, IPaymentGateway gateway) {
+                                 TransactionQueryService transactionQueryService,
+                                 EscrowService escrowService,
+                                 PaymentProcessorFactory paymentProcessorFactory,
+                                 PaymentUserSyncService paymentUserSyncService) {
         this.transactionRepository = transactionRepository;
         this.transactionQueryService = transactionQueryService;
-        this.gateway = gateway;
+        this.escrowService = escrowService;
+        this.paymentProcessorFactory = paymentProcessorFactory;
+        this.paymentUserSyncService = paymentUserSyncService;
     }
 
     /**
@@ -31,6 +41,8 @@ public class PaymentGatewayService {
      */
     @Transactional
     public PaymentDTO initiatePayment(PaymentRequest request) {
+        validateBuyerMode(request.getWinnerId(), request.getPaymentMethod());
+
         // Prevent duplicate payment for the same auction
         transactionRepository.findByAuctionIdAndStatus(
                 request.getAuctionId(), TransactionStatus.PENDING)
@@ -55,7 +67,9 @@ public class PaymentGatewayService {
                 .status(TransactionStatus.PENDING)
                 .build();
 
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -72,14 +86,15 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
-
-        // Use the abstract gateway (SimulatedPaymentGateway will return true)
-        boolean success = gateway.charge(tx.getAmount(), tx.getPaymentMethod().name());
+        PaymentProcessor processor = paymentProcessorFactory.create(tx.getPaymentMethod());
+        boolean success = processor.charge(toRequest(tx));
         if (!success) {
             throw new IllegalStateException("Payment gateway rejected the charge");
         }
 
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -96,7 +111,9 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_FAILED);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -112,7 +129,9 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.PAYMENT_PROCESSING);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -129,7 +148,63 @@ public class PaymentGatewayService {
         }
 
         tx.setStatus(TransactionStatus.CANCELLED);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
+    /**
+     * Full transaction automation after auction enters ENDED/CLOSED_SOLD flow.
+     * Transition chain:
+     * PENDING -> PAYMENT_PROCESSING -> IN_ESCROW -> SHIPPED -> DELIVERY_CONFIRMED -> COMPLETED
+     */
+    @Transactional
+    public PaymentDTO autoSettlePayment(PaymentRequest request) {
+        ensurePreferredMode(request);
+        PaymentDTO initiated = initiatePayment(request);
+        PaymentDTO processing = confirmPayment(initiated.getId());
+        PaymentDTO inEscrow = escrowService.holdFunds(processing.getId());
+        PaymentDTO shipped = escrowService.markShipped(inEscrow.getId());
+        PaymentDTO delivered = escrowService.confirmDelivery(shipped.getId());
+        return escrowService.releaseFunds(delivered.getId());
+    }
+
+    private void validateBuyerMode(Long winnerId, PaymentMethod method) {
+        if (!paymentUserSyncService.isModeEnabledForUser(winnerId, method.name())) {
+            throw new IllegalStateException("Winner has not enabled payment mode " + method + " in profile wallet");
+        }
+    }
+
+    private PaymentRequest toRequest(Transaction tx) {
+        PaymentRequest request = new PaymentRequest();
+        request.setAuctionId(tx.getAuctionId());
+        request.setWinnerId(tx.getWinnerId());
+        request.setSellerId(tx.getSellerId());
+        request.setAmount(tx.getAmount());
+        request.setPaymentMethod(tx.getPaymentMethod());
+        return request;
+    }
+
+    private void ensurePreferredMode(PaymentRequest request) {
+        if (request.getPaymentMethod() != null && isEnabled(request.getWinnerId(), request.getPaymentMethod())) {
+            return;
+        }
+        if (request.getPaymentMethod() == null && isEnabled(request.getWinnerId(), PaymentMethod.CAMPUS_WALLET)) {
+            request.setPaymentMethod(PaymentMethod.CAMPUS_WALLET);
+            return;
+        }
+        for (String mode : paymentUserSyncService.getEnabledModesForUser(request.getWinnerId())) {
+            try {
+                request.setPaymentMethod(PaymentMethod.valueOf(mode));
+                return;
+            } catch (IllegalArgumentException ignored) {
+                // keep trying
+            }
+        }
+        throw new IllegalStateException("Winner has no enabled payment mode in profile wallet");
+    }
+
+    private boolean isEnabled(Long userId, PaymentMethod method) {
+        return paymentUserSyncService.isModeEnabledForUser(userId, method.name());
+    }
 }

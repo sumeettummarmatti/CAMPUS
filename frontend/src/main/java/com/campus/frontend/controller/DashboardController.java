@@ -419,11 +419,12 @@ public class DashboardController {
                 String type = root.path("type").asText();
                 if ("AUCTION_ENDED".equals(type)) {
                     String winnerName = root.path("winnerName").asText();
+                    long winnerId = root.path("winnerId").asLong(-1L);
                     double amount = root.path("amount").asDouble();
                     liveHighestBidLabel.setText("🏆 Auction Ended! Winner: " + winnerName + " with bid ₹" + amount);
                     
                     // Auto-Redirect winner to payment
-                    if (winnerName.equalsIgnoreCase(currentUser.getEmail())) {
+                    if (winnerId == currentUser.getId() || winnerName.equalsIgnoreCase(currentUser.getEmail())) {
                         Platform.runLater(() -> openPaymentOptions(
                             root.path("auctionId").asLong(),
                             root.path("sellerId").asLong(),

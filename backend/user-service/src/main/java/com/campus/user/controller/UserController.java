@@ -1,8 +1,11 @@
 package com.campus.user.controller;
 
+import com.campus.user.dto.TransactionSyncRequest;
 import com.campus.user.dto.UserDTO;
+import com.campus.user.dto.WalletModesRequest;
 import com.campus.user.service.SellerVerificationService;
 import com.campus.user.service.UserService;
+import com.campus.user.service.UserTransactionService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -17,10 +20,14 @@ import java.util.Map;
 public class UserController {
     private final UserService userService;
     private final SellerVerificationService sellerVerificationService;
+    private final UserTransactionService userTransactionService;
 
-    public UserController(UserService userService, SellerVerificationService sellerVerificationService) {
+    public UserController(UserService userService,
+                          SellerVerificationService sellerVerificationService,
+                          UserTransactionService userTransactionService) {
         this.userService = userService;
         this.sellerVerificationService = sellerVerificationService;
+        this.userTransactionService = userTransactionService;
     }
 
     /**
@@ -57,6 +64,37 @@ public class UserController {
             @PathVariable Long id,
             @RequestBody UserDTO dto) {
         return ResponseEntity.ok(userService.updateProfile(id, dto));
+    }
+
+    @GetMapping("/{id}/wallet/modes")
+    public ResponseEntity<List<String>> walletModes(@PathVariable Long id) {
+        return ResponseEntity.ok(userTransactionService.getEnabledModes(id));
+    }
+
+    @PutMapping("/{id}/wallet/modes")
+    public ResponseEntity<List<String>> updateWalletModes(@PathVariable Long id, @RequestBody WalletModesRequest request) {
+        return ResponseEntity.ok(userTransactionService.updateEnabledModes(id, request.getModes()));
+    }
+
+    @GetMapping("/{id}/transactions/buyer")
+    public ResponseEntity<?> buyerTransactions(@PathVariable Long id) {
+        return ResponseEntity.ok(userTransactionService.buyerTransactions(id));
+    }
+
+    @GetMapping("/{id}/transactions/seller")
+    public ResponseEntity<?> sellerTransactions(@PathVariable Long id) {
+        return ResponseEntity.ok(userTransactionService.sellerTransactions(id));
+    }
+
+    @GetMapping("/internal/{id}/wallet/modes")
+    public ResponseEntity<List<String>> internalWalletModes(@PathVariable Long id) {
+        return ResponseEntity.ok(userTransactionService.getEnabledModes(id));
+    }
+
+    @PostMapping("/internal/transactions/sync")
+    public ResponseEntity<Void> syncTransaction(@RequestBody TransactionSyncRequest request) {
+        userTransactionService.syncTransaction(request);
+        return ResponseEntity.ok().build();
     }
 
     // ── Seller Verification ─────────────────────────────

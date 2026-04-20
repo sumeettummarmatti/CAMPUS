@@ -16,6 +16,18 @@
 
     <Label fx:id="userInfoLabel" style="-fx-text-fill: #555;"/>
 
+    <VBox spacing="8" style="-fx-background-color: #f8f9fa; -fx-padding: 10; -fx-background-radius: 8;">
+        <Label text="Wallet Payment Modes" style="-fx-font-weight: bold;"/>
+        <HBox spacing="10">
+            <CheckBox fx:id="walletModeCheck" text="CAMPUS Wallet"/>
+            <CheckBox fx:id="gpayModeCheck" text="Google Pay"/>
+            <CheckBox fx:id="cardModeCheck" text="Card"/>
+            <CheckBox fx:id="cashModeCheck" text="Cash"/>
+            <CheckBox fx:id="netBankModeCheck" text="Net Banking"/>
+            <Button text="Save Modes" onAction="#onSaveWalletModes"/>
+        </HBox>
+    </VBox>
+
     <!-- Money summary cards -->
     <HBox spacing="20">
         <VBox style="-fx-background-color: #ebf5fb; -fx-padding: 15; -fx-background-radius: 8;" HBox.hgrow="ALWAYS">
@@ -40,8 +52,6 @@
                 <ListView fx:id="spendingListView" prefHeight="200"/>
                 <HBox spacing="10">
                     <TextField fx:id="confirmTxIdField" promptText="Transaction ID" prefWidth="140"/>
-                    <Button text="Pay Now" onAction="#onPayNow"
-                            style="-fx-background-color: #f39c12; -fx-text-fill: white; -fx-font-weight: bold;"/>
                     <Button text="Confirm Delivery" onAction="#onConfirmDelivery"
                             style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
                     <TextField fx:id="disputeReasonField" promptText="Dispute reason" HBox.hgrow="ALWAYS"/>

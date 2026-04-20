@@ -1,6 +1,9 @@
 package com.campus.user.model;
 
 import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 import java.time.LocalDateTime;
 
 /**
@@ -35,6 +38,20 @@ public class User {
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal walletBalance;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalSpent;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalEarned;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_wallet_modes", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "payment_mode", nullable = false)
+    private List<String> enabledPaymentModes = new ArrayList<>();
+
     public User() {}
 
     public User(Long id, String email, String passwordHash, String fullName, String hostelName, Role role, boolean verified, LocalDateTime createdAt) {
@@ -53,6 +70,21 @@ public class User {
         this.createdAt = LocalDateTime.now();
         if (this.role == null) {
             this.role = Role.BUYER;
+        }
+        if (this.walletBalance == null) {
+            this.walletBalance = new BigDecimal("1000.00");
+        }
+        if (this.totalSpent == null) {
+            this.totalSpent = BigDecimal.ZERO;
+        }
+        if (this.totalEarned == null) {
+            this.totalEarned = BigDecimal.ZERO;
+        }
+        if (this.enabledPaymentModes == null) {
+            this.enabledPaymentModes = new ArrayList<>();
+        }
+        if (this.enabledPaymentModes.isEmpty()) {
+            this.enabledPaymentModes.add("CAMPUS_WALLET");
         }
     }
 
@@ -79,4 +111,16 @@ public class User {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public BigDecimal getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(BigDecimal walletBalance) { this.walletBalance = walletBalance; }
+
+    public BigDecimal getTotalSpent() { return totalSpent; }
+    public void setTotalSpent(BigDecimal totalSpent) { this.totalSpent = totalSpent; }
+
+    public BigDecimal getTotalEarned() { return totalEarned; }
+    public void setTotalEarned(BigDecimal totalEarned) { this.totalEarned = totalEarned; }
+
+    public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
+    public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }
 }

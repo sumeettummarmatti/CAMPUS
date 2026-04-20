@@ -182,8 +182,9 @@ public class BidService {
         } catch (Exception ignore) {}
 
         // Broadcast auction end
-        String endMsg = String.format("{\"type\":\"AUCTION_ENDED\",\"auctionId\":%d,\"sellerId\":%d,\"title\":\"%s\",\"winnerName\":\"%s\",\"amount\":%.2f}", 
-            auctionId, sellerId, title, winnerName, winner.getAmount());
+        String endMsg = String.format(
+            "{\"type\":\"AUCTION_ENDED\",\"auctionId\":%d,\"sellerId\":%d,\"winnerId\":%d,\"title\":\"%s\",\"winnerName\":\"%s\",\"amount\":%.2f}",
+            auctionId, sellerId, winner.getBuyerId(), title, winnerName, winner.getAmount());
         webSocketHandler.broadcastMessage(auctionId, endMsg);
         webSocketHandler.broadcastToAll(endMsg);
     }

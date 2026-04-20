@@ -22,15 +22,18 @@ public class DisputeService {
     private final TransactionQueryService transactionQueryService;
     private final EscrowService escrowService;
     private final INotificationService notifier;
+    private final PaymentUserSyncService paymentUserSyncService;
 
     public DisputeService(TransactionRepository transactionRepository,
                           TransactionQueryService transactionQueryService,
                           EscrowService escrowService,
-                          INotificationService notifier) {
+                          INotificationService notifier,
+                          PaymentUserSyncService paymentUserSyncService) {
         this.transactionRepository = transactionRepository;
         this.transactionQueryService = transactionQueryService;
         this.escrowService = escrowService;
         this.notifier = notifier;
+        this.paymentUserSyncService = paymentUserSyncService;
     }
 
     /**
@@ -52,7 +55,9 @@ public class DisputeService {
         tx.setDisputeStatus(DisputeStatus.OPEN);
         tx.setDisputeReason(reason);
         notifier.notifyDisputeOpened(tx.getWinnerId(), tx.getSellerId(), tx.getAuctionId());
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -67,7 +72,9 @@ public class DisputeService {
         }
 
         tx.setDisputeStatus(DisputeStatus.UNDER_REVIEW);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -79,7 +86,8 @@ public class DisputeService {
         requireUnderReview(tx);
 
         tx.setDisputeStatus(DisputeStatus.RESOLVED_BUYER);
-        transactionRepository.save(tx);
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
         notifier.notifyDisputeResolved(tx.getWinnerId(), tx.getSellerId(), "BUYER");
         return escrowService.refundFunds(transactionId);
     }
@@ -97,7 +105,9 @@ public class DisputeService {
         tx.setStatus(TransactionStatus.COMPLETED);
         tx.setReleasedAt(LocalDateTime.now());
         notifier.notifyDisputeResolved(tx.getWinnerId(), tx.getSellerId(), "SELLER");
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -120,7 +130,9 @@ public class DisputeService {
         tx.setDisputeStatus(DisputeStatus.CLOSED);
         tx.setStatus(restoreStatus);
         tx.setPreDisputeStatus(null);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     // ── private helper ──────────────────────────────────────────────────────

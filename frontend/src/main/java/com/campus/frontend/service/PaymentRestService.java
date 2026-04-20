@@ -51,15 +51,14 @@ public class PaymentRestService {
     }
 
     public void payWithMethod(Long transactionId, String method) throws Exception {
-        // Step 1: Submit to mock gateway (moves PENDING -> PAYMENT_PROCESSING)
-        // We'll treat the method name as a ref for charging
+        // Step 1: submit to payment factory flow (PENDING -> PAYMENT_PROCESSING)
         HttpRequest req1 = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/" + transactionId + "/confirm"))
                 .header("Authorization", "Bearer " + token)
                 .POST(HttpRequest.BodyPublishers.noBody()).build();
         http.send(req1, HttpResponse.BodyHandlers.ofString());
 
-        // Step 2: Simulate immediate gateway success by moving into Escrow
+        // Step 2: move to escrow
         HttpRequest req2 = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/" + transactionId + "/escrow/hold"))
                 .header("Authorization", "Bearer " + token)
