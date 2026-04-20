@@ -145,8 +145,10 @@ public class BidService {
 
         // The first bid is the highest
         Bid winner = bids.get(0);
-        winner.setStatus(BidStatus.WON);
-        bidRepository.save(winner);
+        if (winner.getStatus() != BidStatus.WON) {
+            winner.setStatus(BidStatus.WON);
+            bidRepository.save(winner);
+        }
         log.info("Bid {} declared WON for auction {}", winner.getId(), auctionId);
 
         // All other bids are LOST or OUTBID

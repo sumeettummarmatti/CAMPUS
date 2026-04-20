@@ -10,6 +10,8 @@ import com.campus.payment.service.paymentmode.PaymentProcessor;
 import com.campus.payment.service.paymentmode.PaymentProcessorFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.util.EnumSet;
+import java.util.List;
 
 /**
  * Core payment gateway — initiates, confirms, and cancels transactions.
@@ -43,20 +45,10 @@ public class PaymentGatewayService {
     public PaymentDTO initiatePayment(PaymentRequest request) {
         validateBuyerMode(request.getWinnerId(), request.getPaymentMethod());
 
-        // Prevent duplicate payment for the same auction
-        transactionRepository.findByAuctionIdAndStatus(
-                request.getAuctionId(), TransactionStatus.PENDING)
-                .ifPresent(t -> {
-                    throw new IllegalStateException(
-                            "A pending payment already exists for auction: " + request.getAuctionId());
-                });
-
-        transactionRepository.findByAuctionIdAndStatus(
-                request.getAuctionId(), TransactionStatus.IN_ESCROW)
-                .ifPresent(t -> {
-                    throw new IllegalStateException(
-                            "Payment for auction " + request.getAuctionId() + " is already in escrow");
-                });
+        PaymentDTO existing = findExistingAuctionPayment(request.getAuctionId());
+        if (existing != null) {
+            return existing;
+        }
 
         Transaction tx = Transaction.builder()
                 .auctionId(request.getAuctionId())
@@ -161,6 +153,10 @@ public class PaymentGatewayService {
     @Transactional
     public PaymentDTO autoSettlePayment(PaymentRequest request) {
         ensurePreferredMode(request);
+        PaymentDTO existing = findExistingAuctionPayment(request.getAuctionId());
+        if (existing != null) {
+            return existing;
+        }
         PaymentDTO initiated = initiatePayment(request);
         PaymentDTO processing = confirmPayment(initiated.getId());
         PaymentDTO inEscrow = escrowService.holdFunds(processing.getId());
@@ -206,5 +202,27 @@ public class PaymentGatewayService {
 
     private boolean isEnabled(Long userId, PaymentMethod method) {
         return paymentUserSyncService.isModeEnabledForUser(userId, method.name());
+    }
+
+    private PaymentDTO findExistingAuctionPayment(Long auctionId) {
+        List<Transaction> existing = transactionRepository.findByAuctionIdOrderByCreatedAtDesc(auctionId);
+        if (existing.isEmpty()) {
+            return null;
+        }
+        EnumSet<TransactionStatus> liveStatuses = EnumSet.of(
+                TransactionStatus.PENDING,
+                TransactionStatus.PAYMENT_PROCESSING,
+                TransactionStatus.IN_ESCROW,
+                TransactionStatus.SHIPPED,
+                TransactionStatus.DELIVERY_CONFIRMED,
+                TransactionStatus.COMPLETED,
+                TransactionStatus.DISPUTED
+        );
+        for (Transaction tx : existing) {
+            if (liveStatuses.contains(tx.getStatus())) {
+                return transactionQueryService.toDTO(tx);
+            }
+        }
+        return null;
     }
 }

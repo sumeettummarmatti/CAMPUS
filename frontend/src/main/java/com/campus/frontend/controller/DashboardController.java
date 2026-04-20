@@ -68,6 +68,8 @@ public class DashboardController {
     private LocalDateTime selectedAuctionEndTime; // NEW
     private Long currentlyWatchedAuctionId;      // NEW
     private javafx.animation.Timeline timerTimeline; // NEW
+    private final java.util.Set<Long> handledEndedAuctions = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private boolean paymentPopupOpen = false;
 
     private static final DateTimeFormatter ISO_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -171,7 +173,9 @@ public class DashboardController {
                     }
                     if (msg.contains("TIME EXTENDED") && currentlyWatchedAuctionId != null) {
                         if (msg.contains("Auction #" + currentlyWatchedAuctionId)) {
-                            webSocketHandlerClientConnect(currentlyWatchedAuctionId);
+                            if (currentlyWatchedAuctionId != null) {
+                                onConnectWebSocket(null);
+                            }
                         }
                     }
                 }
@@ -397,6 +401,7 @@ public class DashboardController {
     }
 
     private void webSocketHandlerClientConnect(Long auctionId) {
+        webSocketClient.disconnect();
         this.currentlyWatchedAuctionId = auctionId;
         // Fetch end time first so timer works
         new Thread(() -> {
@@ -418,13 +423,17 @@ public class DashboardController {
                 JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
                 String type = root.path("type").asText();
                 if ("AUCTION_ENDED".equals(type)) {
+                    long auctionIdFromEvent = root.path("auctionId").asLong();
                     String winnerName = root.path("winnerName").asText();
                     long winnerId = root.path("winnerId").asLong(-1L);
                     double amount = root.path("amount").asDouble();
                     liveHighestBidLabel.setText("🏆 Auction Ended! Winner: " + winnerName + " with bid ₹" + amount);
                     
                     // Auto-Redirect winner to payment
-                    if (winnerId == currentUser.getId() || winnerName.equalsIgnoreCase(currentUser.getEmail())) {
+                    boolean iWon = winnerId == currentUser.getId() || winnerName.equalsIgnoreCase(currentUser.getEmail());
+                    boolean alreadyHandled = handledEndedAuctions.contains(auctionIdFromEvent);
+                    if (iWon && !alreadyHandled && !paymentPopupOpen) {
+                        handledEndedAuctions.add(auctionIdFromEvent);
                         Platform.runLater(() -> openPaymentOptions(
                             root.path("auctionId").asLong(),
                             root.path("sellerId").asLong(),
@@ -543,6 +552,10 @@ public class DashboardController {
 
     private void openPaymentOptions(long aucId, long selId, String title, double amt) {
         try {
+            if (paymentPopupOpen) {
+                return;
+            }
+            paymentPopupOpen = true;
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/PaymentOptions.fxml"));
             javafx.scene.Parent root = loader.load();
             PaymentOptionsController controller = loader.getController();
@@ -552,8 +565,10 @@ public class DashboardController {
             stage.setTitle("Complete Your Purchase");
             stage.setScene(new javafx.scene.Scene(root));
             stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setOnHidden(e -> paymentPopupOpen = false);
             stage.show();
         } catch (Exception e) {
+            paymentPopupOpen = false;
             e.printStackTrace();
             bidStatusLabel.setText("Error opening payment screen: " + e.getMessage());
         }
