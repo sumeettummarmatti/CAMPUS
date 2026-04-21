@@ -65,9 +65,16 @@ public class CampusApp extends Application {
      * Transition to main application Dashboard.
      */
     public void loadDashboard() throws Exception {
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Dashboard.fxml"));
-        Parent root = loader.load();
-        primaryStage.setScene(new Scene(root, 800, 600));
+    String role = currentUser != null ? currentUser.getRole() : "BUYER";
+        if ("ADMIN".equals(role)) {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AdminDashboard.fxml"));
+            Parent root = loader.load();
+            primaryStage.setScene(new Scene(root, 900, 650));
+        } else {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Dashboard.fxml"));
+            Parent root = loader.load();
+            primaryStage.setScene(new Scene(root, 800, 600));
+        }
     }
 
     public static void main(String[] args) {

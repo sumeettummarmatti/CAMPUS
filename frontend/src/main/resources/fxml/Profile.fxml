@@ -71,11 +71,27 @@
         <Tab text="Sales (Selling)">
             <VBox spacing="8">
                 <padding><Insets top="10"/></padding>
-                <ListView fx:id="earningsListView" prefHeight="200"/>
+                <Label text="Your sales transactions. Copy a TX# and mark it shipped once you've sent the item."
+                    style="-fx-text-fill: #7f8c8d; -fx-font-size: 12;" wrapText="true"/>
+                <ListView fx:id="earningsListView" prefHeight="180"/>
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label text="Transaction ID:"/>
+                    <TextField fx:id="sellerTxIdField" promptText="TX ID" prefWidth="100"/>
+                    <Button text="Mark as Shipped" onAction="#onMarkShipped"
+                            style="-fx-background-color: #2980b9; -fx-text-fill: white; -fx-font-weight: bold;"/>
+                </HBox>
+                <Label text="After you mark as shipped, the buyer confirms delivery, then funds are released to you."
+                    style="-fx-text-fill: #95a5a6; -fx-font-size: 11;" wrapText="true"/>
             </VBox>
         </Tab>
-
     </TabPane>
-
+    <Separator/>
+    <VBox spacing="8" style="-fx-background-color: #fef9e7; -fx-padding: 12; -fx-background-radius: 8;">
+        <Label text="Seller Access" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
+        <Label text="Want to list items for auction? Request seller access — an admin will review and approve your account."
+            wrapText="true" style="-fx-text-fill: #7f8c8d; -fx-font-size: 12;"/>
+        <Button text="Request Seller Access" onAction="#onRequestSellerAccess"
+                style="-fx-background-color: #8e44ad; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </VBox>
     <Label fx:id="actionStatusLabel" wrapText="true"/>
 </VBox>

@@ -118,4 +118,28 @@ public class PaymentRestService {
                 .POST(HttpRequest.BodyPublishers.ofString(body)).build();
         http.send(req, HttpResponse.BodyHandlers.ofString());
     }
+
+    /** Seller marks item as shipped (IN_ESCROW → SHIPPED) */
+    public void markShipped(Long transactionId) throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/ship"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not mark as shipped: " + resp.body());
+        }
+    }
+
+    /** Release funds to seller after delivery confirmed (DELIVERY_CONFIRMED → COMPLETED) */
+    public void releaseFunds(Long transactionId) throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/release"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not release funds: " + resp.body());
+        }
+    }
 }

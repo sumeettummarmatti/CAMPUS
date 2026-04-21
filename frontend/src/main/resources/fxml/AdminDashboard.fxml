@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<BorderPane xmlns="http://javafx.com/javafx/17"
+            xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.campus.frontend.controller.AdminDashboardController">
+
+    <top>
+        <HBox spacing="12" alignment="CENTER_LEFT"
+              style="-fx-background-color: #1a1a2e; -fx-padding: 10 20;">
+            <Label text="CAMPUS ADMIN" style="-fx-text-fill: #e94560; -fx-font-size: 18;
+                                              -fx-font-weight: bold;"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="adminEmailLabel" style="-fx-text-fill: #a8b2d8;"/>
+            <Button text="Logout" onAction="#onLogout"
+                    style="-fx-background-color: #e94560; -fx-text-fill: white;"/>
+        </HBox>
+    </top>
+
+    <center>
+        <TabPane tabClosingPolicy="UNAVAILABLE">
+
+            <!-- SELLER VERIFICATION TAB -->
+            <Tab text="Seller Verification">
+                <VBox spacing="12">
+                    <padding><Insets top="20" left="20" right="20" bottom="20"/></padding>
+                    <Label text="Pending Seller Verification Requests"
+                           style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                    <Label text="These users have requested to become sellers. Review and approve or reject."
+                           style="-fx-text-fill: #7f8c8d; -fx-font-size: 12;" wrapText="true"/>
+                    <Button text="Refresh List" onAction="#onRefreshPendingSellers"/>
+                    <ListView fx:id="pendingSellersListView" prefHeight="300"/>
+                    <HBox spacing="10">
+                        <Label text="User ID:"/>
+                        <TextField fx:id="verifyUserIdField" prefWidth="100" promptText="User ID"/>
+                        <Button text="✅ Approve Seller" onAction="#onApproveSeller"
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white;
+                                       -fx-font-weight: bold;"/>
+                        <Button text="❌ Reject Seller" onAction="#onRejectSeller"
+                                style="-fx-background-color: #e74c3c; -fx-text-fill: white;
+                                       -fx-font-weight: bold;"/>
+                    </HBox>
+                    <Label fx:id="verifyStatusLabel" wrapText="true"/>
+                </VBox>
+            </Tab>
+
+            <!-- ALL USERS TAB -->
+            <Tab text="All Users">
+                <VBox spacing="12">
+                    <padding><Insets top="20" left="20" right="20" bottom="20"/></padding>
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label text="Registered Users"
+                               style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button text="Refresh" onAction="#onRefreshUsers"/>
+                    </HBox>
+                    <ListView fx:id="allUsersListView" prefHeight="400"/>
+                </VBox>
+            </Tab>
+
+            <!-- DISPUTE RESOLUTION TAB -->
+            <Tab text="Dispute Resolution">
+                <VBox spacing="12">
+                    <padding><Insets top="20" left="20" right="20" bottom="20"/></padding>
+                    <Label text="Resolve Payment Disputes"
+                           style="-fx-font-size: 16; -fx-font-weight: bold;"/>
+                    <Label text="Enter the Transaction ID of a disputed payment to review and resolve it."
+                           style="-fx-text-fill: #7f8c8d;" wrapText="true"/>
+                    <HBox spacing="10">
+                        <Label text="Transaction ID:"/>
+                        <TextField fx:id="disputeTxIdField" prefWidth="120"/>
+                        <Button text="Put Under Review" onAction="#onReviewDispute"
+                                style="-fx-background-color: #f39c12; -fx-text-fill: white;"/>
+                        <Button text="Rule: Buyer Wins (Refund)" onAction="#onResolveBuyer"
+                                style="-fx-background-color: #3498db; -fx-text-fill: white;"/>
+                        <Button text="Rule: Seller Wins (Release)" onAction="#onResolveSeller"
+                                style="-fx-background-color: #27ae60; -fx-text-fill: white;"/>
+                    </HBox>
+                    <Label fx:id="disputeStatusLabel" wrapText="true"/>
+                </VBox>
+            </Tab>
+
+        </TabPane>
+    </center>
+</BorderPane>

@@ -51,27 +51,27 @@ public class PaymentOptionsController {
 
         new Thread(() -> {
             try {
-                // 1. Initiate
-                JsonNode tx = paymentRestService.initiatePayment(auctionId, winnerId, sellerId, amount, method);
+                // Step 1: Initiate
+                JsonNode tx = paymentRestService.initiatePayment(
+                    auctionId, winnerId, sellerId, amount, method);
                 Long txId = tx.path("id").asLong();
 
-                Platform.runLater(() -> statusLabel.setText("Confirming transaction #" + txId + "..."));
+                Platform.runLater(() -> statusLabel.setText("Processing payment #" + txId + "..."));
 
-                // 2. Confirm and Hold in Escrow
+                // Step 2: Confirm and hold in escrow — this is ALL we do automatically
+                // The seller must then mark it shipped, and the buyer confirms delivery
                 paymentRestService.payWithMethod(txId, method);
-
-                // 3. Auto-complete escrow: ship -> deliver -> release funds to seller
-                //    This moves the transaction to COMPLETED so the seller's earnings are credited.
-                paymentRestService.autoCompleteEscrow(txId);
 
                 Platform.runLater(() -> {
                     statusLabel.setStyle("-fx-text-fill: green;");
-                    statusLabel.setText("Payment complete! Funds released to seller.");
+                    statusLabel.setText(
+                        "✅ Payment successful! Funds are held in escrow.\n" +
+                        "The seller will ship your item. Once you receive it,\n" +
+                        "go to Profile → Purchases and confirm delivery (TX#" + txId + ").");
                     if (onSuccess != null) onSuccess.run();
-                    
-                    // Close after 2 seconds
+
                     new Thread(() -> {
-                        try { Thread.sleep(2000); } catch (InterruptedException ignore) {}
+                        try { Thread.sleep(4000); } catch (InterruptedException ignore) {}
                         Platform.runLater(this::close);
                     }).start();
                 });

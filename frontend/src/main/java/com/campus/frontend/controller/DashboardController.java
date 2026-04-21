@@ -179,7 +179,8 @@ public class DashboardController {
     }
 
     private void connectGlobalWinnerChannel() {
-        // Connect to a special "global" channel (ID 0) to hear about ANY auction ending
+        // Global channel only shows announcements — payment popup is handled
+        // exclusively by the auction-specific WebSocket in webSocketHandlerClientConnect()
         webSocketClient.connect(0L, message -> Platform.runLater(() -> {
             try {
                 JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
@@ -188,10 +189,9 @@ public class DashboardController {
                     long auctionId = root.path("auctionId").asLong();
                     String winnerName = root.path("winnerName").asText();
                     double amount = root.path("amount").asDouble();
-                    
-                    String announcement = String.format("🏆 GLOBAL ANNOUNCEMENT: Auction #%d WON by %s for ₹%.2f!", 
+                    String announcement = String.format(
+                        "🏆 AUCTION ENDED: Auction #%d won by %s for ₹%.2f",
                         auctionId, winnerName, amount);
-                    
                     notifListView.getItems().add(0, announcement);
                     onRefreshAuctions(null);
                 } else if ("GLOBAL_ANNOUNCEMENT".equals(type)) {
@@ -200,16 +200,9 @@ public class DashboardController {
                     if (msg.contains("ACTIVE")) {
                         onRefreshAuctions(null);
                     }
-                    if (msg.contains("TIME EXTENDED") && currentlyWatchedAuctionId != null) {
-                        if (msg.contains("Auction #" + currentlyWatchedAuctionId)) {
-                            if (currentlyWatchedAuctionId != null) {
-                                onConnectWebSocket(null);
-                            }
-                        }
-                    }
                 }
             } catch (Exception e) {
-                // If it's old format string, ignore or handle
+                // Ignore malformed messages
             }
         }));
     }

@@ -32,6 +32,7 @@ public class ProfileController {
     @FXML private TextField disputeReasonField;
     @FXML private TextField topUpAmountField;
     @FXML private Label actionStatusLabel;
+    @FXML private TextField sellerTxIdField;
 
     private PaymentRestService paymentRestService;
     private UserRestService userRestService;
@@ -196,10 +197,14 @@ public class ProfileController {
             Long txId = Long.parseLong(confirmTxIdField.getText());
             new Thread(() -> {
                 try {
+                    // Step 1: confirm delivery (SHIPPED → DELIVERY_CONFIRMED)
                     paymentRestService.confirmDelivery(txId);
+                    // Step 2: release funds to seller (DELIVERY_CONFIRMED → COMPLETED)
+                    paymentRestService.releaseFunds(txId);
                     Platform.runLater(() -> {
                         actionStatusLabel.setStyle("-fx-text-fill: green;");
-                        actionStatusLabel.setText("Delivery confirmed for TX#" + txId);
+                        actionStatusLabel.setText(
+                            "✅ Delivery confirmed! Funds released to seller. TX#" + txId);
                         loadPaymentData();
                     });
                 } catch (Exception ex) {
@@ -237,5 +242,53 @@ public class ProfileController {
     @FXML
     public void onBack(ActionEvent e) {
         try { CampusApp.getInstance().loadDashboard(); } catch (Exception ex) { ex.printStackTrace(); }
+    }
+
+    @FXML
+    public void onMarkShipped(ActionEvent e) {
+        try {
+            Long txId = Long.parseLong(sellerTxIdField.getText());
+            new Thread(() -> {
+                try {
+                    paymentRestService.markShipped(txId);
+                    Platform.runLater(() -> {
+                        actionStatusLabel.setStyle("-fx-text-fill: green;");
+                        actionStatusLabel.setText(
+                            "✅ TX#" + txId + " marked as Shipped! " +
+                            "Buyer will now be asked to confirm delivery.");
+                        loadPaymentData();
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> actionStatusLabel.setText("Error: " + ex.getMessage()));
+                }
+            }).start();
+        } catch (NumberFormatException ex) {
+            actionStatusLabel.setText("Enter a valid transaction ID.");
+        }
+    }
+
+    @FXML
+    public void onRequestSellerAccess(ActionEvent e) {
+        if (currentUser.getId() == null) return;
+        new Thread(() -> {
+            try {
+                HttpRequest req = java.net.http.HttpRequest.newBuilder()
+                        .uri(java.net.URI.create(
+                            com.campus.frontend.config.AppConfig.userServiceUrl() +
+                            "/api/users/" + currentUser.getId() + "/verify/request"))
+                        .header("Authorization", "Bearer " + userRestService.getAuthToken())
+                        .POST(java.net.http.HttpRequest.BodyPublishers.noBody()).build();
+                java.net.http.HttpClient.newHttpClient()
+                        .send(req, java.net.http.HttpResponse.BodyHandlers.ofString());
+                Platform.runLater(() -> {
+                    actionStatusLabel.setStyle("-fx-text-fill: green;");
+                    actionStatusLabel.setText(
+                        "✅ Seller access requested! An admin will review your account. " +
+                        "You'll be able to list items once approved.");
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> actionStatusLabel.setText("Error: " + ex.getMessage()));
+            }
+        }).start();
     }
 }

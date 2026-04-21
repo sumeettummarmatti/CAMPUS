@@ -19,7 +19,8 @@ public class SellerVerificationService {
 
     /**
      * Buyer requests upgrade to seller role.
-     * Sets verified = false until admin approves.
+     * We mark verified=false but keep role=BUYER until admin approves.
+     * The admin sees users with role=SELLER and verified=false as "pending".
      */
     public void requestVerification(Long userId) {
         User user = userRepository.findById(userId)
@@ -29,9 +30,12 @@ public class SellerVerificationService {
             throw new IllegalStateException("User is already a verified seller");
         }
 
+        // Set role to SELLER but unverified — admin must approve
         user.setRole(Role.SELLER);
         user.setVerified(false);
         userRepository.save(user);
+        // NOTE: user cannot create auctions until verified=true (the AuctionService
+        // should check this — see Note below)
     }
 
     /**
