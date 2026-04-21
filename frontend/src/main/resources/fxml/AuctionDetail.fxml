@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.campus.frontend.controller.AuctionDetailController"
+      spacing="14" style="-fx-background-color: #1e2433; -fx-padding: 24;">
+
+    <!-- Header -->
+    <HBox alignment="CENTER_LEFT" spacing="10">
+        <Label fx:id="titleLabel" text="Auction Details"
+               style="-fx-text-fill: #e2e8f0; -fx-font-size: 20; -fx-font-weight: bold;"/>
+    </HBox>
+
+    <Separator style="-fx-background-color: #3d4966;"/>
+
+    <!-- Status badge area -->
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Label text="Status:" style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="statusLabel" text="—"
+               style="-fx-text-fill: #34d399; -fx-font-weight: bold; -fx-font-size: 13;
+                      -fx-background-color: #1e3a2f; -fx-background-radius: 4;
+                      -fx-padding: 2 10;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label text="ID:" style="-fx-text-fill: #94a3b8;"/>
+        <Label fx:id="idLabel" text="—" style="-fx-text-fill: #64748b; -fx-font-size: 12;"/>
+    </HBox>
+
+    <!-- Details grid -->
+    <GridPane hgap="16" vgap="10">
+        <!-- Description -->
+        <Label text="Description:" GridPane.columnIndex="0" GridPane.rowIndex="0"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;" minWidth="130"/>
+        <Label fx:id="descLabel" text="—" wrapText="true" maxWidth="340"
+               GridPane.columnIndex="1" GridPane.rowIndex="0"
+               style="-fx-text-fill: #cbd5e1; -fx-font-size: 13;"/>
+
+        <!-- Starting Price -->
+        <Label text="Starting Price:" GridPane.columnIndex="0" GridPane.rowIndex="1"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="priceLabel" text="—"
+               GridPane.columnIndex="1" GridPane.rowIndex="1"
+               style="-fx-text-fill: #f8fafc; -fx-font-size: 13; -fx-font-weight: bold;"/>
+
+        <!-- Reserve Price -->
+        <Label text="Reserve Price:" GridPane.columnIndex="0" GridPane.rowIndex="2"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="reserveLabel" text="—"
+               GridPane.columnIndex="1" GridPane.rowIndex="2"
+               style="-fx-text-fill: #f8fafc; -fx-font-size: 13;"/>
+
+        <!-- Current Highest Bid -->
+        <Label text="Current Highest Bid:" GridPane.columnIndex="0" GridPane.rowIndex="3"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="highestBidLabel" text="No bids yet"
+               GridPane.columnIndex="1" GridPane.rowIndex="3"
+               style="-fx-text-fill: #fbbf24; -fx-font-size: 14; -fx-font-weight: bold;"/>
+
+        <!-- Seller -->
+        <Label text="Seller ID:" GridPane.columnIndex="0" GridPane.rowIndex="4"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="sellerLabel" text="—"
+               GridPane.columnIndex="1" GridPane.rowIndex="4"
+               style="-fx-text-fill: #cbd5e1; -fx-font-size: 13;"/>
+
+        <!-- Start Time -->
+        <Label text="Start Time:" GridPane.columnIndex="0" GridPane.rowIndex="5"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="startTimeLabel" text="—"
+               GridPane.columnIndex="1" GridPane.rowIndex="5"
+               style="-fx-text-fill: #cbd5e1; -fx-font-size: 13;"/>
+
+        <!-- End Time -->
+        <Label text="End Time:" GridPane.columnIndex="0" GridPane.rowIndex="6"
+               style="-fx-text-fill: #94a3b8; -fx-font-size: 13;"/>
+        <Label fx:id="endTimeLabel" text="—"
+               GridPane.columnIndex="1" GridPane.rowIndex="6"
+               style="-fx-text-fill: #cbd5e1; -fx-font-size: 13;"/>
+    </GridPane>
+
+    <Separator style="-fx-background-color: #3d4966;"/>
+
+    <!-- Footer buttons -->
+    <HBox spacing="10" alignment="CENTER_RIGHT">
+        <Label fx:id="loadingLabel" text="Loading bid info..." style="-fx-text-fill: #64748b; -fx-font-size: 11;"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Close" onAction="#onClose"
+                style="-fx-background-color: #475569; -fx-text-fill: white;
+                       -fx-font-weight: bold; -fx-padding: 6 20; -fx-background-radius: 6;"/>
+    </HBox>
+</VBox>

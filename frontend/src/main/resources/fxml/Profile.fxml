@@ -43,6 +43,13 @@
             <Label fx:id="spendingLabel" style="-fx-font-size: 22; -fx-text-fill: #f39c12;"/>
         </VBox>
     </HBox>
+    
+    <HBox spacing="10" alignment="CENTER_LEFT" style="-fx-background-color: #f4f6f7; -fx-padding: 10; -fx-background-radius: 8;">
+        <Label text="Recharge Wallet:" style="-fx-font-weight: bold;"/>
+        <TextField fx:id="topUpAmountField" promptText="Amount (₹)" prefWidth="120"/>
+        <Button text="Add Funds" onAction="#onTopUpWallet" 
+                style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
+    </HBox>
 
     <TabPane tabClosingPolicy="UNAVAILABLE">
 

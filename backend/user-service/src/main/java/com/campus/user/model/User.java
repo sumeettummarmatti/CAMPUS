@@ -47,6 +47,9 @@ public class User {
     @Column(nullable = false, precision = 12, scale = 2, columnDefinition = "numeric(12,2) default 0.00")
     private BigDecimal totalEarned;
 
+    @Column(nullable = false, precision = 12, scale = 2, columnDefinition = "numeric(12,2) default 0.00")
+    private BigDecimal totalDeposited;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "user_wallet_modes", joinColumns = @JoinColumn(name = "user_id"))
     @Column(name = "payment_mode", nullable = false)
@@ -79,6 +82,9 @@ public class User {
         }
         if (this.totalEarned == null) {
             this.totalEarned = BigDecimal.ZERO;
+        }
+        if (this.totalDeposited == null) {
+            this.totalDeposited = BigDecimal.ZERO;
         }
         if (this.enabledPaymentModes == null) {
             this.enabledPaymentModes = new ArrayList<>();
@@ -120,6 +126,9 @@ public class User {
 
     public BigDecimal getTotalEarned() { return totalEarned; }
     public void setTotalEarned(BigDecimal totalEarned) { this.totalEarned = totalEarned; }
+
+    public BigDecimal getTotalDeposited() { return totalDeposited; }
+    public void setTotalDeposited(BigDecimal totalDeposited) { this.totalDeposited = totalDeposited; }
 
     public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
     public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }

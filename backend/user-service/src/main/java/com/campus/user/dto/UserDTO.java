@@ -35,6 +35,7 @@ public class UserDTO {
     private BigDecimal walletBalance;
     private BigDecimal totalSpent;
     private BigDecimal totalEarned;
+    private BigDecimal totalDeposited;
     private List<String> enabledPaymentModes = new ArrayList<>();
 
     public UserDTO() {}
@@ -78,6 +79,9 @@ public class UserDTO {
 
     public BigDecimal getTotalEarned() { return totalEarned; }
     public void setTotalEarned(BigDecimal totalEarned) { this.totalEarned = totalEarned; }
+
+    public BigDecimal getTotalDeposited() { return totalDeposited; }
+    public void setTotalDeposited(BigDecimal totalDeposited) { this.totalDeposited = totalDeposited; }
 
     public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
     public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }

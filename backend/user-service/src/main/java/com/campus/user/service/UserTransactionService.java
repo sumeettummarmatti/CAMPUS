@@ -36,8 +36,11 @@ public class UserTransactionService {
         tx.setPaymentMethod(request.getPaymentMethod());
         userTransactionRepository.save(tx);
 
-        recalculateUserFinancials(request.getWinnerId());
-        recalculateUserFinancials(request.getSellerId());
+        User winner = userRepository.findById(request.getWinnerId()).orElse(null);
+        User seller = userRepository.findById(request.getSellerId()).orElse(null);
+        
+        if (winner != null) recalculateUserFinancials(winner);
+        if (seller != null) recalculateUserFinancials(seller);
     }
 
     @Transactional(readOnly = true)
@@ -65,10 +68,16 @@ public class UserTransactionService {
         return userRepository.save(user).getEnabledPaymentModes();
     }
 
-    private void recalculateUserFinancials(Long userId) {
+    @Transactional
+    public void topUpWallet(Long userId, BigDecimal amount) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + userId));
+        user.setTotalDeposited(user.getTotalDeposited().add(amount));
+        recalculateUserFinancials(user);
+    }
 
+    private void recalculateUserFinancials(User user) {
+        Long userId = user.getId();
         List<UserTransaction> buys = userTransactionRepository.findByWinnerIdOrderByUpdatedAtDesc(userId);
         List<UserTransaction> sells = userTransactionRepository.findBySellerIdOrderByUpdatedAtDesc(userId);
 
@@ -84,7 +93,10 @@ public class UserTransactionService {
 
         user.setTotalSpent(spent);
         user.setTotalEarned(earned);
-        user.setWalletBalance(new BigDecimal("1000.00").add(earned).subtract(spent));
+        user.setWalletBalance(new BigDecimal("1000.00")
+                .add(earned)
+                .add(user.getTotalDeposited())
+                .subtract(spent));
         userRepository.save(user);
     }
 

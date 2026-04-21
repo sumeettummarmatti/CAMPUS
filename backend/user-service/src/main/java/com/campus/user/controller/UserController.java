@@ -97,6 +97,12 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/{id}/wallet/topup")
+    public ResponseEntity<Void> topUp(@PathVariable Long id, @RequestBody com.campus.user.dto.TopUpRequest request) {
+        userTransactionService.topUpWallet(id, request.getAmount());
+        return ResponseEntity.ok().build();
+    }
+
     // ── Seller Verification ─────────────────────────────
 
     /**

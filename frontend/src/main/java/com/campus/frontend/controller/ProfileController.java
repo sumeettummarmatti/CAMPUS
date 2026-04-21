@@ -30,6 +30,7 @@ public class ProfileController {
     @FXML private ListView<String> spendingListView;
     @FXML private TextField confirmTxIdField;
     @FXML private TextField disputeReasonField;
+    @FXML private TextField topUpAmountField;
     @FXML private Label actionStatusLabel;
 
     private PaymentRestService paymentRestService;
@@ -124,6 +125,38 @@ public class ProfileController {
         cardModeCheck.setSelected(modes.contains("CARD") || modes.contains("CREDIT_CARD"));
         cashModeCheck.setSelected(modes.contains("CASH") || modes.contains("CASH_ON_DELIVERY"));
         netBankModeCheck.setSelected(modes.contains("NET_BANKING"));
+    }
+
+    @FXML
+    public void onTopUpWallet(ActionEvent e) {
+        if (currentUser.getId() == null) return;
+        String amountText = topUpAmountField.getText();
+        if (amountText.isBlank()) {
+            actionStatusLabel.setText("Enter an amount to recharge.");
+            return;
+        }
+        try {
+            double amount = Double.parseDouble(amountText);
+            if (amount <= 0) {
+                actionStatusLabel.setText("Enter a positive amount.");
+                return;
+            }
+            new Thread(() -> {
+                try {
+                    userRestService.topUpWallet(currentUser.getId(), amount);
+                    Platform.runLater(() -> {
+                        actionStatusLabel.setStyle("-fx-text-fill: green;");
+                        actionStatusLabel.setText("Wallet recharged successfully: ₹" + amount);
+                        topUpAmountField.clear();
+                        loadPaymentData();
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> actionStatusLabel.setText("Recharge failed: " + ex.getMessage()));
+                }
+            }).start();
+        } catch (NumberFormatException ex) {
+            actionStatusLabel.setText("Enter a valid numeric amount.");
+        }
     }
 
     @FXML

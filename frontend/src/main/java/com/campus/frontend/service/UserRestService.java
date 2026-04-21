@@ -80,6 +80,7 @@ public class UserRestService {
                 user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
                 user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
                 user.setTotalEarned(profile.path("totalEarned").asDouble(0.0));
+                user.setTotalDeposited(profile.path("totalDeposited").asDouble(0.0));
                 if (profile.path("enabledPaymentModes").isArray()) {
                     java.util.List<String> modes = new java.util.ArrayList<>();
                     for (JsonNode n : profile.path("enabledPaymentModes")) {
@@ -113,6 +114,7 @@ public class UserRestService {
         user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
         user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
         user.setTotalEarned(profile.path("totalEarned").asDouble(0.0));
+        user.setTotalDeposited(profile.path("totalDeposited").asDouble(0.0));
         if (profile.path("enabledPaymentModes").isArray()) {
             java.util.List<String> modes = new java.util.ArrayList<>();
             for (JsonNode n : profile.path("enabledPaymentModes")) {
@@ -163,6 +165,20 @@ public class UserRestService {
             }
         }
         return updated;
+    }
+
+    public void topUpWallet(Long userId, double amount) throws Exception {
+        String body = String.format("{\"amount\":%.2f}", amount);
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/" + userId + "/wallet/topup"))
+                .header("Authorization", "Bearer " + authToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not top up wallet: " + resp.body());
+        }
     }
 
     /**

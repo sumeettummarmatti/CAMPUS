@@ -60,9 +60,13 @@ public class PaymentOptionsController {
                 // 2. Confirm and Hold in Escrow
                 paymentRestService.payWithMethod(txId, method);
 
+                // 3. Auto-complete escrow: ship -> deliver -> release funds to seller
+                //    This moves the transaction to COMPLETED so the seller's earnings are credited.
+                paymentRestService.autoCompleteEscrow(txId);
+
                 Platform.runLater(() -> {
                     statusLabel.setStyle("-fx-text-fill: green;");
-                    statusLabel.setText("Payment successful! Funds are now in Escrow.");
+                    statusLabel.setText("Payment complete! Funds released to seller.");
                     if (onSuccess != null) onSuccess.run();
                     
                     // Close after 2 seconds

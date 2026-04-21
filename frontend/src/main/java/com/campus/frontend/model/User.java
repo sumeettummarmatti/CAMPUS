@@ -15,6 +15,7 @@ public class User {
     private double walletBalance;
     private double totalSpent;
     private double totalEarned;
+    private double totalDeposited;
     private List<String> enabledPaymentModes = new ArrayList<>();
 
     public User() {}
@@ -42,6 +43,9 @@ public class User {
 
     public double getTotalEarned() { return totalEarned; }
     public void setTotalEarned(double totalEarned) { this.totalEarned = totalEarned; }
+
+    public double getTotalDeposited() { return totalDeposited; }
+    public void setTotalDeposited(double totalDeposited) { this.totalDeposited = totalDeposited; }
 
     public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
     public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }

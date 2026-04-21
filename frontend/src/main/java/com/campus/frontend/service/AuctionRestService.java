@@ -51,6 +51,19 @@ public class AuctionRestService {
         return page.path("content");
     }
 
+    /** Fetches full details of a single auction by ID */
+    public JsonNode getAuctionById(Long auctionId) throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + auctionId))
+                .header("Authorization", "Bearer " + token)
+                .GET().build();
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Auction not found: " + resp.body());
+        }
+        return mapper.readTree(resp.body());
+    }
+
     public JsonNode createAuction(String title, String desc, double price,
                                     double reserve, String startTime,
                                     String endTime, Long sellerId) throws Exception {
