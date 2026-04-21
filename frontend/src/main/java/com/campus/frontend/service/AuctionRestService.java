@@ -29,6 +29,17 @@ public class AuctionRestService {
         return page.path("content"); // Spring Page wraps items in "content"
     }
 
+    /** Returns the list of scheduled auctions for global announcements */
+    public JsonNode getScheduledAuctions() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/status/SCHEDULED?size=50"))
+                .header("Authorization", "Bearer " + token)
+                .GET().build();
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        JsonNode page = mapper.readTree(resp.body());
+        return page.path("content");
+    }
+
     /** Returns auctions created by a specific seller */
     public JsonNode getMyAuctions(Long sellerId) throws Exception {
         HttpRequest req = HttpRequest.newBuilder()
@@ -69,6 +80,34 @@ public class AuctionRestService {
         HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
         if (resp.statusCode() != 200) {
             throw new Exception("Schedule failed: " + resp.body());
+        }
+    }
+
+    /** Terminates an auction early (manual end by seller) */
+    public void terminateAuction(Long auctionId, Long sellerId) throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + auctionId + "/terminate-early?sellerId=" + sellerId))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        HttpResponse<String> resp = http.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Termination failed: " + resp.body());
+        }
+    }
+
+    /**
+     * Extend an auction by X minutes.
+     */
+    public void extendAuction(Long auctionId, int minutes) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + auctionId + "/extend?minutes=" + minutes))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        HttpResponse<String> response = http.send(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new Exception("Extension failed: " + response.body());
         }
     }
 }

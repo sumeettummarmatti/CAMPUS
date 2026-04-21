@@ -2,7 +2,6 @@ package com.campus.auction.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
-import lombok.*;
 import java.time.LocalDateTime;
 
 /**
@@ -11,10 +10,6 @@ import java.time.LocalDateTime;
  */
 @Entity
 @Table(name = "auctions")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class Auction {
 
     @Id
@@ -70,6 +65,8 @@ public class Auction {
     private LocalDateTime closedAt;
     private String closureReason;
 
+    public Auction() {}
+
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -86,10 +83,11 @@ public class Auction {
 
     /**
      * Validates auction fields before creating/scheduling.
+     * Allows up to 2 minutes in the past to handle frontend-server clock skew.
      * @throws IllegalArgumentException if validation fails
      */
     public void validateForCreation() {
-        if (this.startTime.isBefore(LocalDateTime.now())) {
+        if (this.startTime.isBefore(LocalDateTime.now().minusMinutes(2))) {
             throw new IllegalArgumentException("Start time cannot be in the past");
         }
         if (this.endTime.isBefore(this.startTime) || this.endTime.equals(this.startTime)) {
@@ -102,4 +100,56 @@ public class Auction {
             throw new IllegalArgumentException("Reserve price cannot be negative");
         }
     }
+
+    // Getters and setters
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
+
+    public Double getReservePrice() { return reservePrice; }
+    public void setReservePrice(Double reservePrice) { this.reservePrice = reservePrice; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public Long getSellerId() { return sellerId; }
+    public void setSellerId(Long sellerId) { this.sellerId = sellerId; }
+
+    public LocalDateTime getStartTime() { return startTime; }
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+
+    public LocalDateTime getEndTime() { return endTime; }
+    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+
+    public AuctionStatus getStatus() { return status; }
+    public void setStatus(AuctionStatus status) { this.status = status; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
+
+    public LocalDateTime getActivatedAt() { return activatedAt; }
+    public void setActivatedAt(LocalDateTime activatedAt) { this.activatedAt = activatedAt; }
+
+    public LocalDateTime getEndedAt() { return endedAt; }
+    public void setEndedAt(LocalDateTime endedAt) { this.endedAt = endedAt; }
+
+    public LocalDateTime getClosedAt() { return closedAt; }
+    public void setClosedAt(LocalDateTime closedAt) { this.closedAt = closedAt; }
+
+    public String getClosureReason() { return closureReason; }
+    public void setClosureReason(String closureReason) { this.closureReason = closureReason; }
 }

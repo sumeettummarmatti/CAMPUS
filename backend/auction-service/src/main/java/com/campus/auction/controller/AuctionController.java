@@ -3,8 +3,8 @@ package com.campus.auction.controller;
 import com.campus.auction.dto.AuctionDTO;
 import com.campus.auction.model.AuctionStatus;
 import com.campus.auction.service.AuctionService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -18,13 +18,17 @@ import jakarta.validation.Valid;
  * 
  * Base path: /api/auctions
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/auctions")
-@RequiredArgsConstructor
 public class AuctionController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuctionController.class);
+
     private final AuctionService auctionService;
+
+    public AuctionController(AuctionService auctionService) {
+        this.auctionService = auctionService;
+    }
 
     /**
      * Create a new auction (DRAFT state).
@@ -209,6 +213,40 @@ public class AuctionController {
     }
 
     /**
+     * Terminate an auction early (Manual closure by seller).
+     * POST /api/auctions/{id}/terminate-early
+     */
+    @PostMapping("/{id}/terminate-early")
+    public ResponseEntity<AuctionDTO> terminateEarly(
+            @PathVariable Long id, 
+            @RequestParam Long sellerId) {
+        log.info("Early termination request for auction {} by seller {}", id, sellerId);
+        try {
+            return ResponseEntity.ok(auctionService.terminateEarly(id, sellerId));
+        } catch (Exception e) {
+            log.error("Termination failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
+     * Extend an auction end time.
+     * POST /api/auctions/{id}/extend?minutes=2
+     */
+    @PostMapping("/{id}/extend")
+    public ResponseEntity<AuctionDTO> extendAuction(
+            @PathVariable Long id, 
+            @RequestParam(defaultValue = "1") int minutes) {
+        log.info("Extension request for auction {} by {} mins", id, minutes);
+        try {
+            return ResponseEntity.ok(auctionService.extendAuction(id, minutes));
+        } catch (Exception e) {
+            log.error("Extension failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
+    }
+
+    /**
      * Close an auction as SOLD (winner found, reserve met).
      * POST /api/auctions/{auctionId}/close-sold
      */
@@ -239,7 +277,8 @@ public class AuctionController {
             @RequestParam(required = false) String reason) {
         log.info("Closing auction as NO_SALE: {}", auctionId);
         try {
-            AuctionDTO closed = auctionService.closeNoSale(auctionId, reason != null ? reason : "No bids received or reserve not met");
+            AuctionDTO closed = auctionService.closeNoSale(auctionId,
+                    reason != null ? reason : "No bids received or reserve not met");
             return ResponseEntity.ok(closed);
         } catch (IllegalArgumentException e) {
             log.warn("Auction not found: {}", auctionId);
@@ -260,7 +299,8 @@ public class AuctionController {
             @RequestParam(required = false) String reason) {
         log.info("Cancelling auction: {}", auctionId);
         try {
-            AuctionDTO cancelled = auctionService.cancelAuction(auctionId, reason != null ? reason : "Cancelled by seller");
+            AuctionDTO cancelled = auctionService.cancelAuction(auctionId,
+                    reason != null ? reason : "Cancelled by seller");
             return ResponseEntity.ok(cancelled);
         } catch (IllegalArgumentException e) {
             log.warn("Auction not found: {}", auctionId);

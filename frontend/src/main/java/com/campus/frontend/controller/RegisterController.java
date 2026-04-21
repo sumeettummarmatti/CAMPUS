@@ -17,13 +17,11 @@ public class RegisterController {
     @FXML private TextField fullNameField;
     @FXML private TextField emailField;
     @FXML private PasswordField passwordField;
-    @FXML private ComboBox<String> roleComboBox;
     @FXML private Label errorLabel;
 
     @FXML
     public void initialize() {
-        roleComboBox.getItems().addAll("BUYER", "SELLER");
-        roleComboBox.getSelectionModel().selectFirst();
+        // Init block
     }
 
     @FXML
@@ -31,7 +29,6 @@ public class RegisterController {
         String fullName = fullNameField.getText();
         String email = emailField.getText();
         String password = passwordField.getText();
-        String role = roleComboBox.getValue();
 
         if (fullName.isBlank() || email.isBlank() || password.isBlank()) {
             errorLabel.setText("All fields are required.");
@@ -42,6 +39,9 @@ public class RegisterController {
             errorLabel.setText("Password must be at least 6 characters.");
             return;
         }
+
+        // Hardcode default role for all new users
+        String role = "BUYER";
 
         errorLabel.setText("Registering...");
 

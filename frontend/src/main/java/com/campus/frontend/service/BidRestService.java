@@ -71,4 +71,39 @@ public class BidRestService {
         );
         return mapper.readTree(response.body());
     }
+
+    /**
+     * Fetch all bids placed by a specific buyer.
+     * Returns a JSON array of BidDTO objects with status (LEADING, OUTBID, WON, LOST).
+     */
+    public JsonNode getMyBids(Long buyerId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(API_URL + "/buyer/" + buyerId))
+            .header("Authorization", "Bearer " + authToken)
+            .GET()
+            .build();
+
+        HttpResponse<String> response = httpClient.send(
+            request, HttpResponse.BodyHandlers.ofString()
+        );
+        return mapper.readTree(response.body());
+    }
+
+    /**
+     * Manually trigger auction resolution (declares winner, etc.).
+     */
+    public void resolveAuction(Long auctionId) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder()
+            .uri(URI.create(API_URL + "/auction/" + auctionId + "/resolve"))
+            .header("Authorization", "Bearer " + authToken)
+            .POST(HttpRequest.BodyPublishers.noBody())
+            .build();
+
+        HttpResponse<String> response = httpClient.send(
+            request, HttpResponse.BodyHandlers.ofString()
+        );
+        if (response.statusCode() != 200) {
+            throw new Exception("Resolution failed: " + response.body());
+        }
+    }
 }

@@ -1,6 +1,11 @@
 spring:
   application:
     name: auction-service
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    deserialization:
+      fail-on-unknown-properties: false
   jpa:
     hibernate:
       ddl-auto: update
@@ -47,3 +52,4 @@ jwt:
 services:
   user-service-url: http://localhost:8081
   bidding-service-url: http://localhost:8083
+  payment-service-url: http://localhost:8084

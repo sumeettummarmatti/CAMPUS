@@ -5,6 +5,7 @@ import com.campus.frontend.model.User;
 import com.campus.frontend.service.AuctionRestService;
 import com.campus.frontend.service.BidRestService;
 import com.campus.frontend.service.BidWebSocketClient;
+import com.campus.frontend.service.PaymentRestService;
 import com.fasterxml.jackson.databind.JsonNode;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -12,6 +13,11 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 public class DashboardController {
 
@@ -20,6 +26,7 @@ public class DashboardController {
     @FXML private TabPane mainTabs;
     @FXML private Tab buyerTab;
     @FXML private Tab sellerTab;
+    @FXML private Tab notifTab;
 
     // Buyer controls
     @FXML private ListView<String> auctionListView;
@@ -27,22 +34,43 @@ public class DashboardController {
     @FXML private TextField bidAmountField;
     @FXML private Label bidStatusLabel;
     @FXML private Label liveHighestBidLabel;
+    @FXML private Label countdownTimerLabel; // NEW
+    @FXML private Label liveClockLabel;     // NEW
 
     // Seller controls
     @FXML private TextField newTitleField;
     @FXML private TextField newDescField;
     @FXML private TextField newPriceField;
     @FXML private TextField newReserveField;
-    @FXML private TextField newStartField;
-    @FXML private TextField newEndField;
     @FXML private Label createStatusLabel;
     @FXML private ListView<String> myAuctionListView;
+    @FXML private TextField terminateAuctionIdField;
+
+    // Date pickers for auction start/end
+    @FXML private DatePicker newStartDate;
+    @FXML private ComboBox<Integer> newStartHour;
+    @FXML private ComboBox<Integer> newStartMin;
+    @FXML private DatePicker newEndDate;
+    @FXML private ComboBox<Integer> newEndHour;
+    @FXML private ComboBox<Integer> newEndMin;
+
+    // Notification controls
+    @FXML private ListView<String> notifListView;
+    @FXML private Label notifStatusLabel;
 
     private BidRestService bidRestService;
     private AuctionRestService auctionRestService;
     private BidWebSocketClient webSocketClient;
+    private PaymentRestService paymentRestService;
     private User currentUser;
     private boolean viewingAsSeller = false;
+    private String globalAnnouncements = "";
+    private LocalDateTime selectedAuctionEndTime; // NEW
+    private Long currentlyWatchedAuctionId;      // NEW
+    private javafx.animation.Timeline timerTimeline; // NEW
+
+    private static final DateTimeFormatter ISO_FMT =
+        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     @FXML
     public void initialize() {
@@ -51,24 +79,155 @@ public class DashboardController {
         bidRestService = new BidRestService(token);
         auctionRestService = new AuctionRestService(token);
         webSocketClient = new BidWebSocketClient();
+        paymentRestService = new PaymentRestService(token);
+
+        // Populate hour and minute combos (0–23, 0–55 step 5)
+        List<Integer> hours = new ArrayList<>();
+        for (int h = 0; h < 24; h++) hours.add(h);
+        List<Integer> minutes = new ArrayList<>();
+        for (int m = 0; m < 60; m++) minutes.add(m);
+
+        newStartHour.setItems(FXCollections.observableArrayList(hours));
+        newStartMin.setItems(FXCollections.observableArrayList(minutes));
+        newEndHour.setItems(FXCollections.observableArrayList(hours));
+        newEndMin.setItems(FXCollections.observableArrayList(minutes));
+
+        // Sensible defaults: start = now+1h, end = now+2h
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime defaultStart = now.plusHours(1);
+        LocalDateTime defaultEnd   = now.plusHours(2);
+
+        newStartDate.setValue(defaultStart.toLocalDate());
+        newStartHour.setValue(defaultStart.getHour());
+        newStartMin.setValue(defaultStart.getMinute());
+
+        newEndDate.setValue(defaultEnd.toLocalDate());
+        newEndHour.setValue(defaultEnd.getHour());
+        newEndMin.setValue(defaultEnd.getMinute());
+
+        // Auto-refresh notifications when the tab is selected
+        notifTab.setOnSelectionChanged(e -> {
+            if (notifTab.isSelected()) onRefreshNotifications(null);
+        });
 
         updateRoleDisplay();
         onRefreshAuctions(null);
+        showGlobalAnnouncements();
+        connectGlobalWinnerChannel();
+        startTimerTimeline();
     }
 
+    private void startTimerTimeline() {
+        timerTimeline = new javafx.animation.Timeline(
+            new javafx.animation.KeyFrame(javafx.util.Duration.seconds(1), e -> {
+                updateLiveClock();
+                updateCountdown();
+            })
+        );
+        timerTimeline.setCycleCount(javafx.animation.Timeline.INDEFINITE);
+        timerTimeline.play();
+    }
+
+    private void updateLiveClock() {
+        if (liveClockLabel != null) {
+            liveClockLabel.setText(java.time.LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
+        }
+    }
+
+    private void updateCountdown() {
+        if (countdownTimerLabel == null || selectedAuctionEndTime == null) return;
+        
+        java.time.Duration diff = java.time.Duration.between(LocalDateTime.now(), selectedAuctionEndTime);
+        if (diff.isNegative() || diff.isZero()) {
+            countdownTimerLabel.setText("Ended");
+            selectedAuctionEndTime = null;
+        } else {
+            long s = diff.getSeconds();
+            countdownTimerLabel.setText(String.format("Time Left: %02d:%02d", s / 60, s % 60));
+        }
+    }
+
+    private void connectGlobalWinnerChannel() {
+        // Connect to a special "global" channel (ID 0) to hear about ANY auction ending
+        webSocketClient.connect(0L, message -> Platform.runLater(() -> {
+            try {
+                JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
+                String type = root.path("type").asText();
+                if ("AUCTION_ENDED".equals(type)) {
+                    long auctionId = root.path("auctionId").asLong();
+                    String winnerName = root.path("winnerName").asText();
+                    double amount = root.path("amount").asDouble();
+                    
+                    String announcement = String.format("🏆 GLOBAL ANNOUNCEMENT: Auction #%d WON by %s for ₹%.2f!", 
+                        auctionId, winnerName, amount);
+                    
+                    notifListView.getItems().add(0, announcement);
+                    onRefreshAuctions(null);
+                } else if ("GLOBAL_ANNOUNCEMENT".equals(type)) {
+                    String msg = root.path("message").asText();
+                    notifListView.getItems().add(0, msg);
+                    if (msg.contains("ACTIVE")) {
+                        onRefreshAuctions(null);
+                    }
+                    if (msg.contains("TIME EXTENDED") && currentlyWatchedAuctionId != null) {
+                        if (msg.contains("Auction #" + currentlyWatchedAuctionId)) {
+                            webSocketHandlerClientConnect(currentlyWatchedAuctionId);
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                // If it's old format string, ignore or handle
+            }
+        }));
+    }
+
+    private void showGlobalAnnouncements() {
+        new Thread(() -> {
+            try {
+                JsonNode active = auctionRestService.getActiveAuctions();
+                JsonNode scheduled = auctionRestService.getScheduledAuctions();
+                
+                StringBuilder sb = new StringBuilder();
+                if (active != null && active.size() > 0) {
+                    sb.append("🔥 ACTIVE AUCTIONS:\n");
+                    for (JsonNode a : active) {
+                        sb.append(String.format(" - ID %d: '%s' (₹%.0f)\n", a.path("id").asLong(), a.path("title").asText(), a.path("price").asDouble()));
+                    }
+                    sb.append("\n");
+                }
+                if (scheduled != null && scheduled.size() > 0) {
+                    sb.append("⏳ UPCOMING SCHEDULED AUCTIONS:\n");
+                    for (JsonNode a : scheduled) {
+                        // Formats the timestamp nicely if available
+                        String rawTime = a.path("startTime").asText();
+                        sb.append(String.format(" - ID %d: '%s' starting at %s\n", a.path("id").asLong(), a.path("title").asText(), rawTime));
+                    }
+                }
+                
+                if (sb.length() > 0) {
+                    globalAnnouncements = sb.toString().trim();
+                    Platform.runLater(() -> onRefreshNotifications(null));
+                }
+            } catch (Exception e) {}
+        }).start();
+    }
+
+
     private void updateRoleDisplay() {
-        String role = currentUser.getRole(); // Might just say "STANDARD" now
+        String role = currentUser.getRole();
         roleLabel.setText("Logged in as: " + currentUser.getEmail() + " (" + role + ")");
 
         if (viewingAsSeller) {
+            if (!mainTabs.getTabs().contains(sellerTab)) {
+                mainTabs.getTabs().add(1, sellerTab);
+            }
             mainTabs.getSelectionModel().select(sellerTab);
             toggleRoleBtn.setText("Switch to Buyer");
         } else {
+            mainTabs.getTabs().remove(sellerTab);
             mainTabs.getSelectionModel().select(buyerTab);
             toggleRoleBtn.setText("Switch to Seller");
         }
-        // Enable seller tab for everyone
-        sellerTab.setDisable(false);
     }
 
     @FXML
@@ -106,7 +265,6 @@ public class DashboardController {
             }
         }).start();
     }
-
     @FXML
     public void onRefreshMyAuctions(ActionEvent e) {
         if (currentUser.getId() == null) return;
@@ -115,9 +273,23 @@ public class DashboardController {
                 JsonNode auctions = auctionRestService.getMyAuctions(currentUser.getId());
                 ObservableList<String> items = FXCollections.observableArrayList();
                 for (JsonNode a : auctions) {
-                    items.add(String.format("[ID:%d] %s — %s",
-                        a.path("id").asLong(),
+                    long auctionId = a.path("id").asLong();
+                    double reserve = a.path("reservePrice").asDouble();
+                    double highest = 0;
+                    try {
+                        JsonNode bids = bidRestService.getBidsForAuction(auctionId);
+                        if (bids.isArray() && bids.size() > 0) {
+                            highest = bids.get(0).path("amount").asDouble();
+                        }
+                    } catch (Exception ignore) {}
+
+                    String reserveInfo = (highest >= reserve && reserve > 0) ? " [RESERVE MET!]" : " [Reserve: ₹" + reserve + "]";
+                    items.add(String.format("[ID:%d] %s — ₹%.0f / ₹%.0f%s (%s)",
+                        auctionId,
                         a.path("title").asText(),
+                        highest,
+                        reserve,
+                        reserveInfo,
                         a.path("status").asText()));
                 }
                 Platform.runLater(() -> myAuctionListView.setItems(items));
@@ -128,16 +300,68 @@ public class DashboardController {
     }
 
     @FXML
+    public void onTerminateEarly(ActionEvent e) {
+        String idText = terminateAuctionIdField.getText();
+        if (idText.isBlank()) { createStatusLabel.setText("Enter ID to terminate."); return; }
+        try {
+            Long auctionId = Long.parseLong(idText);
+            createStatusLabel.setText("Terminating auction #" + auctionId + "...");
+            new Thread(() -> {
+                try {
+                    auctionRestService.terminateAuction(auctionId, currentUser.getId());
+                    // Trigger resolve in bidding service
+                    bidRestService.resolveAuction(auctionId);
+                    Platform.runLater(() -> {
+                        createStatusLabel.setStyle("-fx-text-fill: green;");
+                        createStatusLabel.setText("Auction terminated successfully!");
+                        onRefreshMyAuctions(null);
+                    });
+                } catch (Exception ex) {
+                    Platform.runLater(() -> {
+                        createStatusLabel.setStyle("-fx-text-fill: red;");
+                        createStatusLabel.setText("Termination failed: " + ex.getMessage());
+                    });
+                }
+            }).start();
+        } catch (NumberFormatException ex) {
+            createStatusLabel.setText("Invalid ID format.");
+        }
+    }
+
+    @FXML
     public void onCreateAuction(ActionEvent e) {
         try {
+            // Validate required fields
+            if (newStartDate.getValue() == null || newEndDate.getValue() == null) {
+                createStatusLabel.setStyle("-fx-text-fill: red;");
+                createStatusLabel.setText("Please select start and end dates.");
+                return;
+            }
+            if (newStartHour.getValue() == null || newStartMin.getValue() == null
+                    || newEndHour.getValue() == null || newEndMin.getValue() == null) {
+                createStatusLabel.setStyle("-fx-text-fill: red;");
+                createStatusLabel.setText("Please select hours and minutes for start and end times.");
+                return;
+            }
+
             String title   = newTitleField.getText();
             String desc    = newDescField.getText();
             double price   = Double.parseDouble(newPriceField.getText());
             double reserve = Double.parseDouble(newReserveField.getText());
-            String start   = newStartField.getText() + ":00"; // append seconds
-            String end     = newEndField.getText() + ":00";
-            Long sellerId  = currentUser.getId();
 
+            // Build ISO datetime from date picker + hour/minute combos
+            LocalDate startDate = newStartDate.getValue();
+            LocalDate endDate   = newEndDate.getValue();
+            LocalDateTime startDT = LocalDateTime.of(
+                startDate, java.time.LocalTime.of(newStartHour.getValue(), newStartMin.getValue()));
+            LocalDateTime endDT   = LocalDateTime.of(
+                endDate, java.time.LocalTime.of(newEndHour.getValue(), newEndMin.getValue()));
+
+            String start = startDT.format(ISO_FMT);
+            String end   = endDT.format(ISO_FMT);
+
+            Long sellerId = currentUser.getId();
+            createStatusLabel.setStyle("");
             createStatusLabel.setText("Creating…");
 
             new Thread(() -> {
@@ -159,6 +383,7 @@ public class DashboardController {
                 }
             }).start();
         } catch (NumberFormatException ex) {
+            createStatusLabel.setStyle("-fx-text-fill: red;");
             createStatusLabel.setText("Please enter valid numbers for prices.");
         }
     }
@@ -168,9 +393,56 @@ public class DashboardController {
         String id = auctionIdField.getText();
         if (id.isBlank()) { bidStatusLabel.setText("Enter auction ID first."); return; }
         Long auctionId = Long.parseLong(id);
+        webSocketHandlerClientConnect(auctionId);
+    }
+
+    private void webSocketHandlerClientConnect(Long auctionId) {
+        this.currentlyWatchedAuctionId = auctionId;
+        // Fetch end time first so timer works
+        new Thread(() -> {
+            try {
+                JsonNode a = auctionRestService.getActiveAuctions(); // Ideally getById
+                // Find our auction in the list for now to get endTime
+                for (JsonNode node : a) {
+                    if (node.path("id").asLong() == auctionId) {
+                        String et = node.path("endTime").asText();
+                        Platform.runLater(() -> selectedAuctionEndTime = LocalDateTime.parse(et));
+                        break;
+                    }
+                }
+            } catch (Exception ignore) {}
+        }).start();
+
         webSocketClient.connect(auctionId, message -> Platform.runLater(() -> {
-            String highest = message.replaceAll(".*\"newHighestBid\":(\\d+\\.?\\d*).*", "$1");
-            liveHighestBidLabel.setText("🔴 LIVE — Auction #" + auctionId + " highest bid: ₹" + highest);
+            try {
+                JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
+                String type = root.path("type").asText();
+                if ("AUCTION_ENDED".equals(type)) {
+                    String winnerName = root.path("winnerName").asText();
+                    double amount = root.path("amount").asDouble();
+                    liveHighestBidLabel.setText("🏆 Auction Ended! Winner: " + winnerName + " with bid ₹" + amount);
+                    
+                    // Auto-Redirect winner to payment
+                    if (winnerName.equalsIgnoreCase(currentUser.getEmail())) {
+                        Platform.runLater(() -> openPaymentOptions(
+                            root.path("auctionId").asLong(),
+                            root.path("sellerId").asLong(),
+                            root.path("title").asText(),
+                            amount
+                        ));
+                    }
+                } else {
+                    double highest = root.path("newHighestBid").asDouble();
+                    liveHighestBidLabel.setText("🔴 LIVE — Auction #" + auctionId + " highest bid: ₹" + highest);
+                }
+            } catch (Exception e) {
+                // Handle non-json or old format
+                if (message.contains("{")) { /* skip errors if trying to parse JSON */ }
+                else {
+                    liveHighestBidLabel.setText("🔴 LIVE — " + message);
+                }
+            }
+            onRefreshNotifications(null);
         }));
         bidStatusLabel.setText("Connected to live feed for auction #" + auctionId);
     }
@@ -182,9 +454,37 @@ public class DashboardController {
             Double amount  = Double.parseDouble(bidAmountField.getText());
             Long buyerId   = currentUser.getId();
 
-            bidStatusLabel.setText("Placing bid…");
+            bidStatusLabel.setText("Checking wallet balance...");
             new Thread(() -> {
                 try {
+                    // Check wallet balance dynamically
+                    JsonNode earnings = paymentRestService.getEarnings(buyerId);
+                    JsonNode spending = paymentRestService.getSpending(buyerId);
+                    
+                    double totalEarned = 0, totalSpent = 0;
+                    if (earnings.isArray()) {
+                        for (JsonNode tx : earnings) {
+                            double amt = tx.path("amount").asDouble();
+                            totalEarned += (tx.path("status").asText().equals("COMPLETED")) ? amt : 0;
+                        }
+                    }
+                    if (spending.isArray()) {
+                        for (JsonNode tx : spending) {
+                            double amt = tx.path("amount").asDouble();
+                            String status = tx.path("status").asText();
+                            if (!status.equals("CANCELLED") && !status.equals("REFUNDED")) totalSpent += amt;
+                        }
+                    }
+                    
+                    double currentBalance = 1000.0 + totalEarned - totalSpent;
+                    if (amount > currentBalance) {
+                        Platform.runLater(() -> bidStatusLabel.setText(
+                            String.format("❌ Insufficient Wallet Balance! (Current: ₹%.2f)", currentBalance)
+                        ));
+                        return;
+                    }
+
+                    Platform.runLater(() -> bidStatusLabel.setText("Placing bid..."));
                     JsonNode result = bidRestService.placeBid(auctionId, buyerId, amount);
                     Platform.runLater(() -> bidStatusLabel.setText(
                         "✅ Bid placed! Status: " + result.get("status").asText()));
@@ -194,6 +494,67 @@ public class DashboardController {
             }).start();
         } catch (NumberFormatException ex) {
             bidStatusLabel.setText("Enter valid numbers for auction ID and amount.");
+        }
+    }
+
+    /** Refresh the Notifications tab from the user's bid history. */
+    @FXML
+    public void onRefreshNotifications(ActionEvent e) {
+        if (currentUser.getId() == null) return;
+        new Thread(() -> {
+            try {
+                JsonNode bids = bidRestService.getMyBids(currentUser.getId());
+                ObservableList<String> items = FXCollections.observableArrayList();
+
+                if (bids.isArray()) {
+                    for (JsonNode bid : bids) {
+                        String status = bid.path("status").asText();
+                        long auctionId = bid.path("auctionId").asLong();
+                        double amount  = bid.path("amount").asDouble();
+
+                        String line = switch (status) {
+                            case "OUTBID"  -> String.format("🔔 You were OUTBID on Auction #%d — your bid was ₹%.0f", auctionId, amount);
+                            case "WON"     -> String.format("🏆 You WON Auction #%d with a bid of ₹%.0f — check Profile for payment", auctionId, amount);
+                            case "LOST"    -> String.format("❌ You did not win Auction #%d (your bid: ₹%.0f)", auctionId, amount);
+                            case "LEADING" -> String.format("🟢 You are currently LEADING Auction #%d at ₹%.0f", auctionId, amount);
+                            case "ACCEPTED"-> String.format("✅ Bid ACCEPTED on Auction #%d — ₹%.0f", auctionId, amount);
+                            default        -> String.format("[%s] Auction #%d — ₹%.0f", status, auctionId, amount);
+                        };
+                        items.add(line);
+                    }
+                }
+                
+                if (!globalAnnouncements.isEmpty()) {
+                    items.add(0, globalAnnouncements);
+                }
+
+                Platform.runLater(() -> {
+                    notifListView.setItems(items);
+                    notifStatusLabel.setText(items.isEmpty()
+                        ? "No bid activity yet. Place a bid to see notifications here."
+                        : "Showing " + items.size() + " notification(s). Refresh to update.");
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> notifStatusLabel.setText("Error loading notifications: " + ex.getMessage()));
+            }
+        }).start();
+    }
+
+    private void openPaymentOptions(long aucId, long selId, String title, double amt) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/PaymentOptions.fxml"));
+            javafx.scene.Parent root = loader.load();
+            PaymentOptionsController controller = loader.getController();
+            controller.initData(aucId, selId, currentUser.getId(), amt, title, () -> onRefreshNotifications(null));
+            
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Complete Your Purchase");
+            stage.setScene(new javafx.scene.Scene(root));
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.show();
+        } catch (Exception e) {
+            e.printStackTrace();
+            bidStatusLabel.setText("Error opening payment screen: " + e.getMessage());
         }
     }
 
