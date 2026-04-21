@@ -6,6 +6,7 @@ import com.campus.frontend.service.AuctionRestService;
 import com.campus.frontend.service.BidRestService;
 import com.campus.frontend.service.BidWebSocketClient;
 import com.campus.frontend.service.PaymentRestService;
+import com.campus.frontend.service.UserRestService;
 import com.fasterxml.jackson.databind.JsonNode;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -62,12 +63,15 @@ public class DashboardController {
     private AuctionRestService auctionRestService;
     private BidWebSocketClient webSocketClient;
     private PaymentRestService paymentRestService;
+    private UserRestService userRestService;
     private User currentUser;
     private boolean viewingAsSeller = false;
     private String globalAnnouncements = "";
     private LocalDateTime selectedAuctionEndTime; // NEW
     private Long currentlyWatchedAuctionId;      // NEW
     private javafx.animation.Timeline timerTimeline; // NEW
+    private final java.util.Set<Long> handledEndedAuctions = java.util.concurrent.ConcurrentHashMap.newKeySet();
+    private boolean paymentPopupOpen = false;
 
     private static final DateTimeFormatter ISO_FMT =
         DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
@@ -80,6 +84,7 @@ public class DashboardController {
         auctionRestService = new AuctionRestService(token);
         webSocketClient = new BidWebSocketClient();
         paymentRestService = new PaymentRestService(token);
+        userRestService = CampusApp.getInstance().getRestService();
 
         // Populate hour and minute combos (0–23, 0–55 step 5)
         List<Integer> hours = new ArrayList<>();
@@ -115,6 +120,32 @@ public class DashboardController {
         showGlobalAnnouncements();
         connectGlobalWinnerChannel();
         startTimerTimeline();
+
+        // Double-click on active auction -> show detail popup
+        auctionListView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                String selected = auctionListView.getSelectionModel().getSelectedItem();
+                if (selected != null && selected.startsWith("[ID:")) {
+                    try {
+                        long auctionId = Long.parseLong(selected.substring(4, selected.indexOf(']')));
+                        openAuctionDetailById(auctionId);
+                    } catch (Exception ignored) {}
+                }
+            }
+        });
+
+        // Double-click on my (seller) auction -> show detail popup
+        myAuctionListView.setOnMouseClicked(event -> {
+            if (event.getClickCount() == 2) {
+                String selected = myAuctionListView.getSelectionModel().getSelectedItem();
+                if (selected != null && selected.startsWith("[ID:")) {
+                    try {
+                        long auctionId = Long.parseLong(selected.substring(4, selected.indexOf(']')));
+                        openAuctionDetailById(auctionId);
+                    } catch (Exception ignored) {}
+                }
+            }
+        });
     }
 
     private void startTimerTimeline() {
@@ -171,7 +202,9 @@ public class DashboardController {
                     }
                     if (msg.contains("TIME EXTENDED") && currentlyWatchedAuctionId != null) {
                         if (msg.contains("Auction #" + currentlyWatchedAuctionId)) {
-                            webSocketHandlerClientConnect(currentlyWatchedAuctionId);
+                            if (currentlyWatchedAuctionId != null) {
+                                onConnectWebSocket(null);
+                            }
                         }
                     }
                 }
@@ -215,7 +248,7 @@ public class DashboardController {
 
     private void updateRoleDisplay() {
         String role = currentUser.getRole();
-        roleLabel.setText("Logged in as: " + currentUser.getEmail() + " (" + role + ")");
+        roleLabel.setText("Logged in as: " + currentUser.getEmail());
 
         if (viewingAsSeller) {
             if (!mainTabs.getTabs().contains(sellerTab)) {
@@ -337,8 +370,8 @@ public class DashboardController {
                 createStatusLabel.setText("Please select start and end dates.");
                 return;
             }
-            if (newStartHour.getValue() == null || newStartMin.getValue() == null
-                    || newEndHour.getValue() == null || newEndMin.getValue() == null) {
+            if (newStartHour.getSelectionModel().isEmpty() || newStartMin.getSelectionModel().isEmpty()
+                    || newEndHour.getSelectionModel().isEmpty() || newEndMin.getSelectionModel().isEmpty()) {
                 createStatusLabel.setStyle("-fx-text-fill: red;");
                 createStatusLabel.setText("Please select hours and minutes for start and end times.");
                 return;
@@ -397,6 +430,7 @@ public class DashboardController {
     }
 
     private void webSocketHandlerClientConnect(Long auctionId) {
+        webSocketClient.disconnect();
         this.currentlyWatchedAuctionId = auctionId;
         // Fetch end time first so timer works
         new Thread(() -> {
@@ -418,12 +452,17 @@ public class DashboardController {
                 JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
                 String type = root.path("type").asText();
                 if ("AUCTION_ENDED".equals(type)) {
+                    long auctionIdFromEvent = root.path("auctionId").asLong();
                     String winnerName = root.path("winnerName").asText();
+                    long winnerId = root.path("winnerId").asLong(-1L);
                     double amount = root.path("amount").asDouble();
                     liveHighestBidLabel.setText("🏆 Auction Ended! Winner: " + winnerName + " with bid ₹" + amount);
                     
                     // Auto-Redirect winner to payment
-                    if (winnerName.equalsIgnoreCase(currentUser.getEmail())) {
+                    boolean iWon = winnerId == currentUser.getId() || winnerName.equalsIgnoreCase(currentUser.getEmail());
+                    boolean alreadyHandled = handledEndedAuctions.contains(auctionIdFromEvent);
+                    if (iWon && !alreadyHandled && !paymentPopupOpen) {
+                        handledEndedAuctions.add(auctionIdFromEvent);
                         Platform.runLater(() -> openPaymentOptions(
                             root.path("auctionId").asLong(),
                             root.path("sellerId").asLong(),
@@ -457,26 +496,10 @@ public class DashboardController {
             bidStatusLabel.setText("Checking wallet balance...");
             new Thread(() -> {
                 try {
-                    // Check wallet balance dynamically
-                    JsonNode earnings = paymentRestService.getEarnings(buyerId);
-                    JsonNode spending = paymentRestService.getSpending(buyerId);
+                    // Fetch authoritative balance from user-service
+                    User latest = userRestService.fetchCurrentUserProfile();
+                    double currentBalance = latest.getWalletBalance();
                     
-                    double totalEarned = 0, totalSpent = 0;
-                    if (earnings.isArray()) {
-                        for (JsonNode tx : earnings) {
-                            double amt = tx.path("amount").asDouble();
-                            totalEarned += (tx.path("status").asText().equals("COMPLETED")) ? amt : 0;
-                        }
-                    }
-                    if (spending.isArray()) {
-                        for (JsonNode tx : spending) {
-                            double amt = tx.path("amount").asDouble();
-                            String status = tx.path("status").asText();
-                            if (!status.equals("CANCELLED") && !status.equals("REFUNDED")) totalSpent += amt;
-                        }
-                    }
-                    
-                    double currentBalance = 1000.0 + totalEarned - totalSpent;
                     if (amount > currentBalance) {
                         Platform.runLater(() -> bidStatusLabel.setText(
                             String.format("❌ Insufficient Wallet Balance! (Current: ₹%.2f)", currentBalance)
@@ -540,8 +563,32 @@ public class DashboardController {
         }).start();
     }
 
+    /** Opens a detail popup for any auction by ID. */
+    private void openAuctionDetailById(long auctionId) {
+        try {
+            javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(
+                getClass().getResource("/fxml/AuctionDetail.fxml"));
+            javafx.scene.Parent root = loader.load();
+            AuctionDetailController ctrl = loader.getController();
+            ctrl.loadAuctionById(auctionId);
+
+            javafx.stage.Stage stage = new javafx.stage.Stage();
+            stage.setTitle("Auction Details");
+            stage.setScene(new javafx.scene.Scene(root));
+            stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setResizable(false);
+            stage.show();
+        } catch (Exception e) {
+            bidStatusLabel.setText("Could not open detail: " + e.getMessage());
+        }
+    }
+
     private void openPaymentOptions(long aucId, long selId, String title, double amt) {
         try {
+            if (paymentPopupOpen) {
+                return;
+            }
+            paymentPopupOpen = true;
             javafx.fxml.FXMLLoader loader = new javafx.fxml.FXMLLoader(getClass().getResource("/fxml/PaymentOptions.fxml"));
             javafx.scene.Parent root = loader.load();
             PaymentOptionsController controller = loader.getController();
@@ -551,8 +598,10 @@ public class DashboardController {
             stage.setTitle("Complete Your Purchase");
             stage.setScene(new javafx.scene.Scene(root));
             stage.initModality(javafx.stage.Modality.APPLICATION_MODAL);
+            stage.setOnHidden(e -> paymentPopupOpen = false);
             stage.show();
         } catch (Exception e) {
+            paymentPopupOpen = false;
             e.printStackTrace();
             bidStatusLabel.setText("Error opening payment screen: " + e.getMessage());
         }

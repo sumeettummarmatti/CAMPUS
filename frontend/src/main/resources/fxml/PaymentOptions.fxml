@@ -30,14 +30,14 @@
                         <Font name="System Bold" size="14.0" />
                     </font>
                 </Label>
-                <RadioButton fx:id="upiRadio" text="UPI (Dummy Scan)">
+                <RadioButton fx:id="upiRadio" text="Google Pay">
                     <toggleGroup>
                         <ToggleGroup fx:id="paymentGroup" />
                     </toggleGroup>
                 </RadioButton>
                 <RadioButton fx:id="walletRadio" text="CAMPUS Wallet" toggleGroup="$paymentGroup" selected="true"/>
-                <RadioButton fx:id="cashRadio" text="Cash on Delivery" toggleGroup="$paymentGroup" />
-                <RadioButton fx:id="cardRadio" text="Credit / Debit Card" toggleGroup="$paymentGroup" />
+                <RadioButton fx:id="cashRadio" text="Cash" toggleGroup="$paymentGroup" />
+                <RadioButton fx:id="cardRadio" text="Card" toggleGroup="$paymentGroup" />
                 <RadioButton fx:id="netBankRadio" text="Net Banking" toggleGroup="$paymentGroup" />
             </children>
         </VBox>

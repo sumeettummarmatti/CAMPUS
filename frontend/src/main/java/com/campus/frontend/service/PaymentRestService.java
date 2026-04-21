@@ -51,20 +51,47 @@ public class PaymentRestService {
     }
 
     public void payWithMethod(Long transactionId, String method) throws Exception {
-        // Step 1: Submit to mock gateway (moves PENDING -> PAYMENT_PROCESSING)
-        // We'll treat the method name as a ref for charging
+        // Step 1: submit to payment factory flow (PENDING -> PAYMENT_PROCESSING)
         HttpRequest req1 = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/" + transactionId + "/confirm"))
                 .header("Authorization", "Bearer " + token)
                 .POST(HttpRequest.BodyPublishers.noBody()).build();
         http.send(req1, HttpResponse.BodyHandlers.ofString());
 
-        // Step 2: Simulate immediate gateway success by moving into Escrow
+        // Step 2: move to escrow
         HttpRequest req2 = HttpRequest.newBuilder()
                 .uri(URI.create(BASE + "/" + transactionId + "/escrow/hold"))
                 .header("Authorization", "Bearer " + token)
                 .POST(HttpRequest.BodyPublishers.noBody()).build();
         http.send(req2, HttpResponse.BodyHandlers.ofString());
+    }
+
+    /**
+     * Completes the full escrow lifecycle for a campus auction:
+     * IN_ESCROW -> SHIPPED -> DELIVERY_CONFIRMED -> COMPLETED
+     * This triggers seller earnings to be credited.
+     */
+    public void autoCompleteEscrow(Long transactionId) throws Exception {
+        // Step 3: mark shipped
+        HttpRequest req3 = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/ship"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        http.send(req3, HttpResponse.BodyHandlers.ofString());
+
+        // Step 4: confirm delivery
+        HttpRequest req4 = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/confirm-delivery"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        http.send(req4, HttpResponse.BodyHandlers.ofString());
+
+        // Step 5: release funds to seller (COMPLETED)
+        HttpRequest req5 = HttpRequest.newBuilder()
+                .uri(URI.create(BASE + "/" + transactionId + "/escrow/release"))
+                .header("Authorization", "Bearer " + token)
+                .POST(HttpRequest.BodyPublishers.noBody()).build();
+        http.send(req5, HttpResponse.BodyHandlers.ofString());
     }
 
     /** Initiates a payment for a won auction */

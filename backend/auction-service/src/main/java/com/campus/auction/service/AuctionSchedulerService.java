@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -120,20 +121,20 @@ public class AuctionSchedulerService {
                             try {
                                 String paymentBody = String.format(
                                     java.util.Locale.US,
-                                    "{\"auctionId\":%d,\"winnerId\":%d,\"sellerId\":%d,\"amount\":%.2f,\"paymentMethod\":\"CAMPUS_WALLET\"}",
+                                    "{\"auctionId\":%d,\"winnerId\":%d,\"sellerId\":%d,\"amount\":%.2f,\"paymentMethod\":\"GOOGLE_PAY\"}",
                                     auction.getId(), winnerId, auction.getSellerId(), highestBid
                                 );
                                 HttpHeaders headers = new HttpHeaders();
                                 headers.setContentType(MediaType.APPLICATION_JSON);
                                 HttpEntity<String> entity = new HttpEntity<>(paymentBody, headers);
-                                restTemplate.postForEntity(
-                                    paymentServiceUrl + "/api/payments/initiate",
-                                    entity, Void.class
+                                ResponseEntity<String> paymentResponse = restTemplate.postForEntity(
+                                    paymentServiceUrl + "/api/payments/internal/auto-settle",
+                                    entity, String.class
                                 );
-                                log.info("Payment initiated for auction {}, winner {}, amount {}",
-                                    auction.getId(), winnerId, highestBid);
+                                log.info("Payment auto-settled for auction {}, winner {}, amount {}, response status {}",
+                                    auction.getId(), winnerId, highestBid, paymentResponse.getStatusCode());
                             } catch (Exception payEx) {
-                                log.warn("Could not initiate payment for auction {}: {}",
+                                log.warn("Could not auto-settle payment for auction {}: {}",
                                     auction.getId(), payEx.getMessage());
                             }
                         } else {

@@ -1,5 +1,8 @@
 package com.campus.frontend.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Model representing the authenticated user.
  */
@@ -9,6 +12,11 @@ public class User {
     private String email;
     private String role;
     private boolean verified;
+    private double walletBalance;
+    private double totalSpent;
+    private double totalEarned;
+    private double totalDeposited;
+    private List<String> enabledPaymentModes = new ArrayList<>();
 
     public User() {}
 
@@ -26,4 +34,19 @@ public class User {
 
     public boolean isVerified() { return verified; }
     public void setVerified(boolean verified) { this.verified = verified; }
+
+    public double getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(double walletBalance) { this.walletBalance = walletBalance; }
+
+    public double getTotalSpent() { return totalSpent; }
+    public void setTotalSpent(double totalSpent) { this.totalSpent = totalSpent; }
+
+    public double getTotalEarned() { return totalEarned; }
+    public void setTotalEarned(double totalEarned) { this.totalEarned = totalEarned; }
+
+    public double getTotalDeposited() { return totalDeposited; }
+    public void setTotalDeposited(double totalDeposited) { this.totalDeposited = totalDeposited; }
+
+    public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
+    public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }
 }

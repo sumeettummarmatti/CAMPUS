@@ -145,8 +145,10 @@ public class BidService {
 
         // The first bid is the highest
         Bid winner = bids.get(0);
-        winner.setStatus(BidStatus.WON);
-        bidRepository.save(winner);
+        if (winner.getStatus() != BidStatus.WON) {
+            winner.setStatus(BidStatus.WON);
+            bidRepository.save(winner);
+        }
         log.info("Bid {} declared WON for auction {}", winner.getId(), auctionId);
 
         // All other bids are LOST or OUTBID
@@ -182,8 +184,9 @@ public class BidService {
         } catch (Exception ignore) {}
 
         // Broadcast auction end
-        String endMsg = String.format("{\"type\":\"AUCTION_ENDED\",\"auctionId\":%d,\"sellerId\":%d,\"title\":\"%s\",\"winnerName\":\"%s\",\"amount\":%.2f}", 
-            auctionId, sellerId, title, winnerName, winner.getAmount());
+        String endMsg = String.format(
+            "{\"type\":\"AUCTION_ENDED\",\"auctionId\":%d,\"sellerId\":%d,\"winnerId\":%d,\"title\":\"%s\",\"winnerName\":\"%s\",\"amount\":%.2f}",
+            auctionId, sellerId, winner.getBuyerId(), title, winnerName, winner.getAmount());
         webSocketHandler.broadcastMessage(auctionId, endMsg);
         webSocketHandler.broadcastToAll(endMsg);
     }

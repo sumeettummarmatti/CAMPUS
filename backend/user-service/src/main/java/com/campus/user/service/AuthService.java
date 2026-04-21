@@ -7,6 +7,9 @@ import com.campus.user.model.User;
 import com.campus.user.repository.UserRepository;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+
 @Service
 public class AuthService {
 
@@ -35,6 +38,12 @@ public class AuthService {
         user.setHostelName(dto.getHostelName());
         user.setRole(dto.getRole() != null ? dto.getRole() : Role.BUYER);
         user.setVerified(false);
+        user.setWalletBalance(new BigDecimal("1000.00"));
+        user.setTotalSpent(BigDecimal.ZERO);
+        user.setTotalEarned(BigDecimal.ZERO);
+        ArrayList<String> modes = new ArrayList<>();
+        modes.add("CAMPUS_WALLET");
+        user.setEnabledPaymentModes(modes);
 
         User saved = userRepository.save(user);
         return toDTO(saved);
@@ -64,6 +73,10 @@ public class AuthService {
         dto.setHostelName(user.getHostelName());
         dto.setRole(user.getRole());
         dto.setVerified(user.isVerified());
+        dto.setWalletBalance(user.getWalletBalance());
+        dto.setTotalSpent(user.getTotalSpent());
+        dto.setTotalEarned(user.getTotalEarned());
+        dto.setEnabledPaymentModes(user.getEnabledPaymentModes());
         return dto;
     }
 }

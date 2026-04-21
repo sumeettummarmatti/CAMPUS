@@ -21,4 +21,6 @@ public interface TransactionRepository extends JpaRepository<Transaction, Long> 
     List<Transaction> findBySellerId(Long sellerId);
 
     Optional<Transaction> findByAuctionIdAndStatus(Long auctionId, TransactionStatus status);
+
+    List<Transaction> findByAuctionIdOrderByCreatedAtDesc(Long auctionId);
 }

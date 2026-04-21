@@ -21,6 +21,7 @@ public class BidWebSocketClient {
      * @param onMessage  callback — receives the raw JSON string on each update
      */
     public void connect(Long auctionId, Consumer<String> onMessage) {
+        disconnect();
         URI uri = URI.create("ws://localhost:8083/ws/auction/" + auctionId);
 
         httpClient.newWebSocketBuilder()
@@ -48,6 +49,7 @@ public class BidWebSocketClient {
     public void disconnect() {
         if (webSocket != null && !webSocket.isInputClosed()) {
             webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "done");
+            webSocket = null;
         }
     }
 }

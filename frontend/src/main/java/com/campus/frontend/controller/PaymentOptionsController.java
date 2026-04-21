@@ -38,6 +38,7 @@ public class PaymentOptionsController {
 
         String token = CampusApp.getInstance().getRestService().getAuthToken();
         this.paymentRestService = new PaymentRestService(token);
+        applyModeAccess();
 
         auctionDetailsLabel.setText(String.format("%s (Auction #%d) — ₹%.2f", title, auctionId, amount));
     }
@@ -59,9 +60,13 @@ public class PaymentOptionsController {
                 // 2. Confirm and Hold in Escrow
                 paymentRestService.payWithMethod(txId, method);
 
+                // 3. Auto-complete escrow: ship -> deliver -> release funds to seller
+                //    This moves the transaction to COMPLETED so the seller's earnings are credited.
+                paymentRestService.autoCompleteEscrow(txId);
+
                 Platform.runLater(() -> {
                     statusLabel.setStyle("-fx-text-fill: green;");
-                    statusLabel.setText("Payment successful! Funds are now in Escrow.");
+                    statusLabel.setText("Payment complete! Funds released to seller.");
                     if (onSuccess != null) onSuccess.run();
                     
                     // Close after 2 seconds
@@ -86,14 +91,34 @@ public class PaymentOptionsController {
     }
 
     private String getSelectedMethod() {
-        if (upiRadio.isSelected()) return "UPI";
-        if (cashRadio.isSelected()) return "CASH_ON_DELIVERY";
-        if (cardRadio.isSelected()) return "CREDIT_CARD";
+        if (upiRadio.isSelected()) return "GOOGLE_PAY";
+        if (cashRadio.isSelected()) return "CASH";
+        if (cardRadio.isSelected()) return "CARD";
         if (netBankRadio.isSelected()) return "NET_BANKING";
         return "CAMPUS_WALLET";
     }
 
     private void close() {
         ((Stage) auctionDetailsLabel.getScene().getWindow()).close();
+    }
+
+    private void applyModeAccess() {
+        java.util.List<String> enabled = CampusApp.getInstance().getCurrentUser().getEnabledPaymentModes();
+        if (enabled == null || enabled.isEmpty()) {
+            walletRadio.setSelected(true);
+            return;
+        }
+        walletRadio.setDisable(!enabled.contains("CAMPUS_WALLET"));
+        upiRadio.setDisable(!(enabled.contains("GOOGLE_PAY") || enabled.contains("UPI")));
+        cardRadio.setDisable(!(enabled.contains("CARD") || enabled.contains("CREDIT_CARD")));
+        cashRadio.setDisable(!(enabled.contains("CASH") || enabled.contains("CASH_ON_DELIVERY")));
+        netBankRadio.setDisable(!enabled.contains("NET_BANKING"));
+
+        if (walletRadio.isDisable() && walletRadio.isSelected()) {
+            if (!upiRadio.isDisable()) upiRadio.setSelected(true);
+            else if (!cardRadio.isDisable()) cardRadio.setSelected(true);
+            else if (!cashRadio.isDisable()) cashRadio.setSelected(true);
+            else if (!netBankRadio.isDisable()) netBankRadio.setSelected(true);
+        }
     }
 }

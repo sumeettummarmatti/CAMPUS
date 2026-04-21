@@ -69,6 +69,11 @@ public class UserService {
         dto.setHostelName(user.getHostelName());
         dto.setRole(user.getRole());
         dto.setVerified(user.isVerified());
+        dto.setWalletBalance(user.getWalletBalance());
+        dto.setTotalSpent(user.getTotalSpent());
+        dto.setTotalEarned(user.getTotalEarned());
+        dto.setTotalDeposited(user.getTotalDeposited());
+        dto.setEnabledPaymentModes(user.getEnabledPaymentModes());
         return dto;
     }
 }

@@ -39,6 +39,8 @@
                         <Button text="Refresh" onAction="#onRefreshAuctions"/>
                     </HBox>
                     <ListView fx:id="auctionListView" VBox.vgrow="ALWAYS" prefHeight="300"/>
+                    <Label text="💡 Double-click an auction to see full details"
+                           style="-fx-text-fill: #95a5a6; -fx-font-size: 11;"/>
                     <Separator/>
                     <Label text="Place a Bid" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
                     <HBox spacing="10">
@@ -103,6 +105,8 @@
                     <Separator/>
                     <Label text="My Listed Auctions" style="-fx-font-size: 14; -fx-font-weight: bold;"/>
                     <ListView fx:id="myAuctionListView" prefHeight="180"/>
+                    <Label text="💡 Double-click an auction to see full details"
+                           style="-fx-text-fill: #95a5a6; -fx-font-size: 11;"/>
                     <HBox spacing="10" alignment="CENTER_LEFT">
                         <Button text="Refresh My Auctions" onAction="#onRefreshMyAuctions"/>
                         <Region HBox.hgrow="ALWAYS"/>

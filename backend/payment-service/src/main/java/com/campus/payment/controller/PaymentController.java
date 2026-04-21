@@ -39,6 +39,14 @@ public class PaymentController {
     }
 
     /**
+     * POST /api/payments/internal/auto-settle — internal flow for automatic settlement.
+     */
+    @PostMapping("/internal/auto-settle")
+    public ResponseEntity<PaymentDTO> autoSettle(@Valid @RequestBody PaymentRequest request) {
+        return ResponseEntity.status(201).body(paymentGatewayService.autoSettlePayment(request));
+    }
+
+    /**
      * POST /api/payments/{id}/confirm — submit payment to gateway, moves PENDING → PAYMENT_PROCESSING.
      */
     @PostMapping("/{id}/confirm")

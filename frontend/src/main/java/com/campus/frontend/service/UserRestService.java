@@ -77,9 +77,107 @@ public class UserRestService {
                 JsonNode profile = mapper.readTree(resp.body());
                 user.setId(profile.path("id").asLong());
                 user.setFullName(profile.path("fullName").asText());
+                user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
+                user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
+                user.setTotalEarned(profile.path("totalEarned").asDouble(0.0));
+                user.setTotalDeposited(profile.path("totalDeposited").asDouble(0.0));
+                if (profile.path("enabledPaymentModes").isArray()) {
+                    java.util.List<String> modes = new java.util.ArrayList<>();
+                    for (JsonNode n : profile.path("enabledPaymentModes")) {
+                        modes.add(n.asText());
+                    }
+                    user.setEnabledPaymentModes(modes);
+                }
             }
         } catch (Exception e) {
             System.err.println("Could not fetch profile: " + e.getMessage());
+        }
+    }
+
+    public User fetchCurrentUserProfile() throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/me"))
+                .header("Authorization", "Bearer " + authToken)
+                .GET()
+                .build();
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not fetch profile: " + resp.body());
+        }
+
+        JsonNode profile = mapper.readTree(resp.body());
+        User user = new User();
+        user.setId(profile.path("id").asLong());
+        user.setEmail(profile.path("email").asText());
+        user.setRole(profile.path("role").asText("BUYER"));
+        user.setFullName(profile.path("fullName").asText());
+        user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
+        user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
+        user.setTotalEarned(profile.path("totalEarned").asDouble(0.0));
+        user.setTotalDeposited(profile.path("totalDeposited").asDouble(0.0));
+        if (profile.path("enabledPaymentModes").isArray()) {
+            java.util.List<String> modes = new java.util.ArrayList<>();
+            for (JsonNode n : profile.path("enabledPaymentModes")) {
+                modes.add(n.asText());
+            }
+            user.setEnabledPaymentModes(modes);
+        }
+        return user;
+    }
+
+    public java.util.List<String> getWalletModes(Long userId) throws Exception {
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/" + userId + "/wallet/modes"))
+                .header("Authorization", "Bearer " + authToken)
+                .GET()
+                .build();
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not fetch wallet modes: " + resp.body());
+        }
+        java.util.List<String> modes = new java.util.ArrayList<>();
+        JsonNode arr = mapper.readTree(resp.body());
+        if (arr.isArray()) {
+            for (JsonNode n : arr) {
+                modes.add(n.asText());
+            }
+        }
+        return modes;
+    }
+
+    public java.util.List<String> updateWalletModes(Long userId, java.util.List<String> modes) throws Exception {
+        String body = mapper.writeValueAsString(java.util.Map.of("modes", modes));
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/" + userId + "/wallet/modes"))
+                .header("Authorization", "Bearer " + authToken)
+                .header("Content-Type", "application/json")
+                .PUT(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+                .build();
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not update wallet modes: " + resp.body());
+        }
+        java.util.List<String> updated = new java.util.ArrayList<>();
+        JsonNode arr = mapper.readTree(resp.body());
+        if (arr.isArray()) {
+            for (JsonNode n : arr) {
+                updated.add(n.asText());
+            }
+        }
+        return updated;
+    }
+
+    public void topUpWallet(Long userId, double amount) throws Exception {
+        String body = String.format("{\"amount\":%.2f}", amount);
+        HttpRequest req = HttpRequest.newBuilder()
+                .uri(URI.create(AppConfig.userServiceUrl() + "/api/users/" + userId + "/wallet/topup"))
+                .header("Authorization", "Bearer " + authToken)
+                .header("Content-Type", "application/json")
+                .POST(HttpRequest.BodyPublishers.ofString(body))
+                .build();
+        HttpResponse<String> resp = httpClient.send(req, HttpResponse.BodyHandlers.ofString());
+        if (resp.statusCode() != 200) {
+            throw new Exception("Could not top up wallet: " + resp.body());
         }
     }
 

@@ -5,6 +5,10 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * DTO for user registration and profile responses.
  */
@@ -27,6 +31,12 @@ public class UserDTO {
     private Role role;
 
     private boolean verified;
+
+    private BigDecimal walletBalance;
+    private BigDecimal totalSpent;
+    private BigDecimal totalEarned;
+    private BigDecimal totalDeposited;
+    private List<String> enabledPaymentModes = new ArrayList<>();
 
     public UserDTO() {}
 
@@ -60,4 +70,19 @@ public class UserDTO {
     
     public boolean isVerified() { return verified; }
     public void setVerified(boolean verified) { this.verified = verified; }
+
+    public BigDecimal getWalletBalance() { return walletBalance; }
+    public void setWalletBalance(BigDecimal walletBalance) { this.walletBalance = walletBalance; }
+
+    public BigDecimal getTotalSpent() { return totalSpent; }
+    public void setTotalSpent(BigDecimal totalSpent) { this.totalSpent = totalSpent; }
+
+    public BigDecimal getTotalEarned() { return totalEarned; }
+    public void setTotalEarned(BigDecimal totalEarned) { this.totalEarned = totalEarned; }
+
+    public BigDecimal getTotalDeposited() { return totalDeposited; }
+    public void setTotalDeposited(BigDecimal totalDeposited) { this.totalDeposited = totalDeposited; }
+
+    public List<String> getEnabledPaymentModes() { return enabledPaymentModes; }
+    public void setEnabledPaymentModes(List<String> enabledPaymentModes) { this.enabledPaymentModes = enabledPaymentModes; }
 }

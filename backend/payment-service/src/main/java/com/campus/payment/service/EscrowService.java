@@ -18,13 +18,16 @@ public class EscrowService {
     private final TransactionRepository transactionRepository;
     private final TransactionQueryService transactionQueryService;
     private final INotificationService notifier;
+    private final PaymentUserSyncService paymentUserSyncService;
 
     public EscrowService(TransactionRepository transactionRepository,
                          TransactionQueryService transactionQueryService,
-                         INotificationService notifier) {
+                         INotificationService notifier,
+                         PaymentUserSyncService paymentUserSyncService) {
         this.transactionRepository = transactionRepository;
         this.transactionQueryService = transactionQueryService;
         this.notifier = notifier;
+        this.paymentUserSyncService = paymentUserSyncService;
     }
 
     /**
@@ -41,7 +44,9 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.IN_ESCROW);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -57,7 +62,9 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.SHIPPED);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -73,7 +80,9 @@ public class EscrowService {
         }
 
         tx.setStatus(TransactionStatus.DELIVERY_CONFIRMED);
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -91,7 +100,9 @@ public class EscrowService {
         tx.setStatus(TransactionStatus.COMPLETED);
         tx.setReleasedAt(LocalDateTime.now());
         notifier.notifyFundsReleased(tx.getSellerId(), tx.getAuctionId());
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 
     /**
@@ -110,6 +121,8 @@ public class EscrowService {
 
         tx.setStatus(TransactionStatus.REFUNDED);
         notifier.notifyRefundIssued(tx.getWinnerId(), tx.getAuctionId());
-        return transactionQueryService.toDTO(transactionRepository.save(tx));
+        Transaction saved = transactionRepository.save(tx);
+        paymentUserSyncService.syncTransaction(saved);
+        return transactionQueryService.toDTO(saved);
     }
 }
