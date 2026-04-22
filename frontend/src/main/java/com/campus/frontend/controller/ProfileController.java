@@ -136,10 +136,10 @@ public class ProfileController {
                     applyWalletModes(currentUser.getEnabledPaymentModes());
 
                     String role = latest.getRole() != null ? latest.getRole() : "";
-                    boolean alreadySeller = "SELLER".equals(role) || "ADMIN".equals(role) || latest.isVerified();
+                    boolean isBuyer = "BUYER".equals(role);
                     if (requestSellerAccessBtn != null) {
-                        requestSellerAccessBtn.setVisible(!alreadySeller);
-                        requestSellerAccessBtn.setManaged(!alreadySeller);
+                        requestSellerAccessBtn.setVisible(isBuyer);
+                        requestSellerAccessBtn.setManaged(isBuyer);
                     }
                 });
 

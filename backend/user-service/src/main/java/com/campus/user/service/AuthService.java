@@ -37,9 +37,7 @@ public class AuthService {
         user.setFullName(dto.getFullName());
         user.setHostelName(dto.getHostelName());
         user.setRole(dto.getRole() != null ? dto.getRole() : Role.BUYER);
-        // Buyers are auto-verified. Only seller upgrade requests need admin approval.
-        boolean needsApproval = (user.getRole() == Role.SELLER);
-        user.setVerified(!needsApproval);
+        user.setVerified(true);
         user.setWalletBalance(new BigDecimal("1000.00"));
         user.setTotalSpent(BigDecimal.ZERO);
         user.setTotalEarned(BigDecimal.ZERO);

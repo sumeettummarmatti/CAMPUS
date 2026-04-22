@@ -249,12 +249,16 @@ public class DashboardController {
         }).start();
     }
 
-
     private void updateRoleDisplay() {
-        String role = currentUser.getRole();
         roleLabel.setText("Logged in as: " + currentUser.getEmail());
 
-        if (viewingAsSeller) {
+        boolean isVerifiedSeller = "SELLER".equals(currentUser.getRole()) && currentUser.isVerified();
+
+        // Only verified sellers get the toggle button
+        toggleRoleBtn.setVisible(isVerifiedSeller);
+        toggleRoleBtn.setManaged(isVerifiedSeller);
+
+        if (isVerifiedSeller && viewingAsSeller) {
             if (!mainTabs.getTabs().contains(sellerTab)) {
                 mainTabs.getTabs().add(1, sellerTab);
             }
@@ -263,7 +267,9 @@ public class DashboardController {
         } else {
             mainTabs.getTabs().remove(sellerTab);
             mainTabs.getSelectionModel().select(buyerTab);
-            toggleRoleBtn.setText("Switch to Seller");
+            if (isVerifiedSeller) {
+                toggleRoleBtn.setText("Switch to Seller");
+            }
         }
     }
 
