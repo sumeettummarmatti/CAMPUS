@@ -11,6 +11,10 @@ import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -68,43 +72,70 @@ public class ProfileController {
                 JsonNode earnings = paymentRestService.getEarnings(currentUser.getId());
                 JsonNode spending = paymentRestService.getSpending(currentUser.getId());
 
+                // DEBUG — print what we got
+                System.out.println("[Profile] Earnings response: " + earnings.toString());
+                System.out.println("[Profile] Spending response: " + spending.toString());
+                System.out.println("[Profile] Seller ID: " + currentUser.getId());
+
                 ObservableList<String> earnItems = FXCollections.observableArrayList();
                 ObservableList<String> spendItems = FXCollections.observableArrayList();
 
-                for (JsonNode tx : earnings) {
-                    double amt = tx.path("amount").asDouble();
-                    earnItems.add(String.format("[TX#%d] Auction #%d — ₹%.2f — %s",
-                        tx.path("id").asLong(),
-                        tx.path("auctionId").asLong(),
-                        amt,
-                        tx.path("status").asText()));
+                if (earnings.isArray()) {
+                    for (JsonNode tx : earnings) {
+                        earnItems.add(String.format("[TX#%d] Auction #%d — ₹%.2f — %s",
+                            tx.path("id").asLong(),
+                            tx.path("auctionId").asLong(),
+                            tx.path("amount").asDouble(),
+                            tx.path("status").asText()));
+                    }
+                } else {
+                    System.out.println("[Profile] Earnings was not an array: "
+                        + earnings.toString());
                 }
 
-                for (JsonNode tx : spending) {
-                    double amt = tx.path("amount").asDouble();
-                    String status = tx.path("status").asText();
-                    spendItems.add(String.format("[TX#%d] Auction #%d — ₹%.2f — %s",
-                        tx.path("id").asLong(),
-                        tx.path("auctionId").asLong(),
-                        amt,
-                        status));
+                if (spending.isArray()) {
+                    for (JsonNode tx : spending) {
+                        spendItems.add(String.format("[TX#%d] Auction #%d — ₹%.2f — %s",
+                            tx.path("id").asLong(),
+                            tx.path("auctionId").asLong(),
+                            tx.path("amount").asDouble(),
+                            tx.path("status").asText()));
+                    }
                 }
 
                 Platform.runLater(() -> {
-                    balanceLabel.setText(String.format("₹%.2f", currentUser.getWalletBalance()));
-                    earningsLabel.setText(String.format("₹%.2f", currentUser.getTotalEarned()));
-                    spendingLabel.setText(String.format("₹%.2f", currentUser.getTotalSpent()));
+                    balanceLabel.setText(
+                        String.format("₹%.2f", currentUser.getWalletBalance()));
+                    earningsLabel.setText(
+                        String.format("₹%.2f", currentUser.getTotalEarned()));
+                    spendingLabel.setText(
+                        String.format("₹%.2f", currentUser.getTotalSpent()));
                     earningsListView.setItems(earnItems);
                     spendingListView.setItems(spendItems);
+
+                    if (earnItems.isEmpty()) {
+                        earningsListView.setPlaceholder(new Label(
+                            "No sales yet. Complete an auction sale to see it here."));
+                    }
+                    if (spendItems.isEmpty()) {
+                        spendingListView.setPlaceholder(new Label(
+                            "No purchases yet."));
+                    }
+
                     applyWalletModes(currentUser.getEnabledPaymentModes());
                 });
 
             } catch (Exception e) {
-                Platform.runLater(() -> actionStatusLabel.setText("Error loading payments: " + e.getMessage()));
+                System.out.println("[Profile] ERROR loading payment data: "
+                    + e.getMessage());
+                e.printStackTrace();
+                Platform.runLater(() ->
+                    actionStatusLabel.setText(
+                        "Error loading payments: " + e.getMessage()));
             }
         }).start();
     }
-
+    
     private void loadWalletModes() {
         if (currentUser.getId() == null) {
             return;

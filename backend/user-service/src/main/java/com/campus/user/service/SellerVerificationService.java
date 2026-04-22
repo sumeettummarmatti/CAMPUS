@@ -39,15 +39,13 @@ public class SellerVerificationService {
     }
 
     /**
-     * Admin approves seller verification.
+     * Admin approves a user — sets verified = true regardless of role.
+     * This covers both new buyer accounts and seller upgrade requests.
      */
     public void approveSeller(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
-
-        if (user.getRole() != Role.SELLER) {
-            throw new IllegalStateException("User has not requested seller verification");
-        }
+                .orElseThrow(() -> new IllegalArgumentException(
+                    "User not found: " + userId));
 
         user.setVerified(true);
         userRepository.save(user);

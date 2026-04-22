@@ -110,6 +110,7 @@ public class UserRestService {
         user.setId(profile.path("id").asLong());
         user.setEmail(profile.path("email").asText());
         user.setRole(profile.path("role").asText("BUYER"));
+        user.setVerified(profile.path("verified").asBoolean(false));
         user.setFullName(profile.path("fullName").asText());
         user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
         user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
@@ -201,5 +202,28 @@ public class UserRestService {
         if (response.statusCode() != 201) {
             throw new Exception("Registration failed: " + response.body());
         }
+    }
+
+    /**
+     * Returns true if the user with the given ID is verified.
+     * Returns false if the user doesn't exist or the call fails.
+     */
+    public boolean isUserVerified(Long userId) {
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(URI.create(
+                        AppConfig.userServiceUrl() + "/api/users/" + userId))
+                    .header("Authorization", "Bearer " + authToken)
+                    .GET().build();
+            HttpResponse<String> resp = httpClient.send(
+                req, HttpResponse.BodyHandlers.ofString());
+            if (resp.statusCode() == 200) {
+                JsonNode profile = mapper.readTree(resp.body());
+                return profile.path("verified").asBoolean(false);
+            }
+        } catch (Exception e) {
+            // Silently fail — just show as unverified
+        }
+        return false;
     }
 }

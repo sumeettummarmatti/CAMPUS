@@ -146,6 +146,17 @@ public class DashboardController {
                 }
             }
         });
+
+        // Show wallet balance hint
+        if (currentUser.getWalletBalance() > 0) {
+            bidStatusLabel.setStyle("-fx-text-fill: #64748b;");
+            bidStatusLabel.setText(
+                "Wallet: ₹" + String.format("%.2f", currentUser.getWalletBalance()) +
+                "  |  Payment modes: " +
+                (currentUser.getEnabledPaymentModes().isEmpty()
+                    ? "⚠️ None set — go to Profile"
+                    : String.join(", ", currentUser.getEnabledPaymentModes())));
+        }
     }
 
     private void startTimerTimeline() {
@@ -271,7 +282,10 @@ public class DashboardController {
                 ObservableList<String> items = FXCollections.observableArrayList();
                 for (JsonNode a : auctions) {
                     long auctionId = a.path("id").asLong();
+                    long sellerId  = a.path("sellerId").asLong();
                     double displayPrice = a.path("price").asDouble();
+
+                    // Fetch live highest bid
                     try {
                         JsonNode bids = bidRestService.getBidsForAuction(auctionId);
                         if (bids.isArray() && bids.size() > 0) {
@@ -279,18 +293,29 @@ public class DashboardController {
                         }
                     } catch (Exception ignore) {}
 
-                    items.add(String.format("[ID:%d] %s — ₹%.0f  (%s)",
+                    // Check if seller is verified
+                    boolean sellerVerified =
+                        userRestService.isUserVerified(sellerId);
+                    String verifiedBadge = sellerVerified
+                        ? " [✓ Verified Seller]"
+                        : " [Unverified Seller]";
+
+                    items.add(String.format("[ID:%d] %s — ₹%.0f  (%s)%s",
                         auctionId,
                         a.path("title").asText(),
                         displayPrice,
-                        a.path("status").asText()));
+                        a.path("status").asText(),
+                        verifiedBadge));
                 }
                 Platform.runLater(() -> auctionListView.setItems(items));
             } catch (Exception ex) {
-                Platform.runLater(() -> bidStatusLabel.setText("Could not load auctions: " + ex.getMessage()));
+                Platform.runLater(() ->
+                    bidStatusLabel.setText(
+                        "Could not load auctions: " + ex.getMessage()));
             }
         }).start();
     }
+
     @FXML
     public void onRefreshMyAuctions(ActionEvent e) {
         if (currentUser.getId() == null) return;
@@ -387,6 +412,16 @@ public class DashboardController {
             String end   = endDT.format(ISO_FMT);
 
             Long sellerId = currentUser.getId();
+
+            // Check payment mode is set
+            java.util.List<String> modes = currentUser.getEnabledPaymentModes();
+            if (modes == null || modes.isEmpty()) {
+                createStatusLabel.setStyle("-fx-text-fill: #e67e22;");
+                createStatusLabel.setText(
+                    "⚠️ Set up a payment mode in Profile first before listing items.");
+                return;
+            }
+
             createStatusLabel.setStyle("");
             createStatusLabel.setText("Creating…");
 
@@ -486,30 +521,78 @@ public class DashboardController {
             Double amount  = Double.parseDouble(bidAmountField.getText());
             Long buyerId   = currentUser.getId();
 
-            bidStatusLabel.setText("Checking wallet balance...");
+            bidStatusLabel.setText("Checking your account...");
+
             new Thread(() -> {
                 try {
-                    // Fetch authoritative balance from user-service
+                    // Always fetch latest profile for accurate balance
                     User latest = userRestService.fetchCurrentUserProfile();
-                    double currentBalance = latest.getWalletBalance();
-                    
-                    if (amount > currentBalance) {
-                        Platform.runLater(() -> bidStatusLabel.setText(
-                            String.format("❌ Insufficient Wallet Balance! (Current: ₹%.2f)", currentBalance)
-                        ));
+
+                    // --- Check 1: Payment mode set up ---
+                    java.util.List<String> modes = latest.getEnabledPaymentModes();
+                    if (modes == null || modes.isEmpty()) {
+                        Platform.runLater(() -> {
+                            bidStatusLabel.setStyle("-fx-text-fill: #e67e22;");
+                            bidStatusLabel.setText(
+                                "⚠️ Set up a payment mode first!\n" +
+                                "Go to Profile → Wallet Payment Modes → " +
+                                "tick at least one option → Save Modes.");
+                        });
                         return;
                     }
 
-                    Platform.runLater(() -> bidStatusLabel.setText("Placing bid..."));
+                    // --- Check 2: Minimum ₹100 in wallet ---
+                    double balance = latest.getWalletBalance();
+                    if (balance < 100.0) {
+                        Platform.runLater(() -> {
+                            bidStatusLabel.setStyle("-fx-text-fill: #e67e22;");
+                            bidStatusLabel.setText(
+                                "⚠️ Your wallet needs at least ₹100 to bid.\n" +
+                                "Current balance: ₹" + String.format("%.2f", balance) +
+                                "  →  Go to Profile → Add Funds.");
+                        });
+                        return;
+                    }
+
+                    // --- Check 3: Sufficient balance for this bid ---
+                    if (amount > balance) {
+                        Platform.runLater(() -> {
+                            bidStatusLabel.setStyle("-fx-text-fill: #e74c3c;");
+                            bidStatusLabel.setText(
+                                "❌ Insufficient balance!\n" +
+                                "Bid: ₹" + String.format("%.2f", amount) +
+                                "  |  Your wallet: ₹" +
+                                String.format("%.2f", balance) +
+                                "  →  Go to Profile → Add Funds.");
+                        });
+                        return;
+                    }
+
+                    // All checks passed — place the bid
+                    Platform.runLater(() -> {
+                        bidStatusLabel.setStyle("");
+                        bidStatusLabel.setText("Placing bid...");
+                    });
                     JsonNode result = bidRestService.placeBid(auctionId, buyerId, amount);
-                    Platform.runLater(() -> bidStatusLabel.setText(
-                        "✅ Bid placed! Status: " + result.get("status").asText()));
+                    Platform.runLater(() -> {
+                        bidStatusLabel.setStyle("-fx-text-fill: #27ae60;");
+                        bidStatusLabel.setText(
+                            "✅ Bid placed! Status: " +
+                            result.get("status").asText());
+                    });
+
                 } catch (Exception ex) {
-                    Platform.runLater(() -> bidStatusLabel.setText("❌ " + ex.getMessage()));
+                    Platform.runLater(() -> {
+                        bidStatusLabel.setStyle("-fx-text-fill: #e74c3c;");
+                        bidStatusLabel.setText("❌ " + ex.getMessage());
+                    });
                 }
             }).start();
+
         } catch (NumberFormatException ex) {
-            bidStatusLabel.setText("Enter valid numbers for auction ID and amount.");
+            bidStatusLabel.setStyle("-fx-text-fill: #e74c3c;");
+            bidStatusLabel.setText(
+                "Enter valid numbers for auction ID and bid amount.");
         }
     }
 

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox alignment="CENTER" spacing="20"
+      xmlns="http://javafx.com/javafx/17"
+      xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.campus.frontend.controller.PendingApprovalController"
+      style="-fx-background-color: #1e2433;">
+    <padding><Insets top="60" left="60" right="60" bottom="60"/></padding>
+
+    <Label text="⏳" style="-fx-font-size: 60;"/>
+
+    <Label text="Account Pending Approval"
+           style="-fx-text-fill: #e2e8f0; -fx-font-size: 22; -fx-font-weight: bold;"/>
+
+    <Label fx:id="emailLabel" text=""
+           style="-fx-text-fill: #94a3b8; -fx-font-size: 14;"/>
+
+    <Label text="Your account has been created successfully. An admin needs to\napprove it before you can start buying or selling on CAMPUS."
+           style="-fx-text-fill: #64748b; -fx-font-size: 13;" textAlignment="CENTER"
+           wrapText="true" maxWidth="400"/>
+
+    <Separator style="-fx-background-color: #3d4966;" maxWidth="300"/>
+
+    <Label text="What to do next:"
+           style="-fx-text-fill: #94a3b8; -fx-font-size: 13; -fx-font-weight: bold;"/>
+
+    <VBox spacing="6" alignment="CENTER">
+        <Label text="1. Contact the platform admin at admin@campus.edu"
+               style="-fx-text-fill: #64748b; -fx-font-size: 12;"/>
+        <Label text="2. Or wait — admins check the dashboard regularly"
+               style="-fx-text-fill: #64748b; -fx-font-size: 12;"/>
+        <Label text="3. Come back and log in again once approved"
+               style="-fx-text-fill: #64748b; -fx-font-size: 12;"/>
+    </VBox>
+
+    <Button text="Check Again / Refresh" onAction="#onCheckAgain"
+            style="-fx-background-color: #3b82f6; -fx-text-fill: white;
+                   -fx-font-weight: bold; -fx-padding: 10 30; -fx-background-radius: 8;"/>
+
+    <Button text="Logout" onAction="#onLogout"
+            style="-fx-background-color: #475569; -fx-text-fill: white;
+                   -fx-padding: 8 24; -fx-background-radius: 8;"/>
+
+    <Label fx:id="statusLabel" text="" style="-fx-text-fill: #94a3b8; -fx-font-size: 12;"/>
+</VBox>

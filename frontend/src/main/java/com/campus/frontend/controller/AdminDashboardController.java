@@ -40,23 +40,24 @@ public class AdminDashboardController {
                 for (JsonNode u : users) {
                     String role = u.path("role").asText();
                     boolean verified = u.path("verified").asBoolean();
-                    // Show users who are SELLER but not yet verified
-                    if ("SELLER".equals(role) && !verified) {
-                        items.add(String.format("[ID:%d] %s (%s) — PENDING VERIFICATION",
+                    // Show ALL unverified users except admins
+                    if (!verified && !"ADMIN".equals(role)) {
+                        items.add(String.format(
+                            "[ID:%d] %s (%s) — Role: %s — AWAITING APPROVAL",
                             u.path("id").asLong(),
                             u.path("fullName").asText(),
-                            u.path("email").asText()));
+                            u.path("email").asText(),
+                            role));
                     }
                 }
                 Platform.runLater(() -> {
                     pendingSellersListView.setItems(items);
-                    if (items.isEmpty()) {
-                        pendingSellersListView.setPlaceholder(
-                            new Label("No pending verification requests."));
-                    }
+                    pendingSellersListView.setPlaceholder(
+                        new Label("No pending approvals."));
                 });
             } catch (Exception ex) {
-                Platform.runLater(() -> verifyStatusLabel.setText("Error: " + ex.getMessage()));
+                Platform.runLater(() ->
+                    verifyStatusLabel.setText("Error: " + ex.getMessage()));
             }
         }).start();
     }

@@ -65,16 +65,34 @@ public class CampusApp extends Application {
      * Transition to main application Dashboard.
      */
     public void loadDashboard() throws Exception {
-    String role = currentUser != null ? currentUser.getRole() : "BUYER";
+        User user = currentUser;
+        if (user == null) {
+            loadLoginScreen();
+            return;
+        }
+
+        String role = user.getRole();
+
+        // Admin always gets through
         if ("ADMIN".equals(role)) {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/AdminDashboard.fxml"));
+            FXMLLoader loader = new FXMLLoader(
+                getClass().getResource("/fxml/AdminDashboard.fxml"));
             Parent root = loader.load();
             primaryStage.setScene(new Scene(root, 900, 650));
-        } else {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Dashboard.fxml"));
-            Parent root = loader.load();
-            primaryStage.setScene(new Scene(root, 800, 600));
+            return;
         }
+
+        // Everyone else must be verified (admin-approved)
+        if (!user.isVerified()) {
+            loadPendingApprovalScreen();
+            return;
+        }
+
+        // Normal user — load regular dashboard
+        FXMLLoader loader = new FXMLLoader(
+            getClass().getResource("/fxml/Dashboard.fxml"));
+        Parent root = loader.load();
+        primaryStage.setScene(new Scene(root, 800, 600));
     }
 
     public static void main(String[] args) {
@@ -86,5 +104,12 @@ public class CampusApp extends Application {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/Profile.fxml"));
         Parent root = loader.load();
         primaryStage.setScene(new Scene(root, 800, 600));
+    }
+
+    public void loadPendingApprovalScreen() throws Exception {
+        FXMLLoader loader = new FXMLLoader(
+            getClass().getResource("/fxml/PendingApproval.fxml"));
+        Parent root = loader.load();
+        primaryStage.setScene(new Scene(root, 500, 500));
     }
 }

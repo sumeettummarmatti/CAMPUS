@@ -23,7 +23,7 @@
         <TabPane tabClosingPolicy="UNAVAILABLE">
 
             <!-- SELLER VERIFICATION TAB -->
-            <Tab text="Seller Verification">
+            <Tab text="User Approvals">
                 <VBox spacing="12">
                     <padding><Insets top="20" left="20" right="20" bottom="20"/></padding>
                     <Label text="Pending Seller Verification Requests"
