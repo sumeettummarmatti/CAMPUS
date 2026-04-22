@@ -190,8 +190,6 @@ public class DashboardController {
     }
 
     private void connectGlobalWinnerChannel() {
-        // Global channel only shows announcements — payment popup is handled
-        // exclusively by the auction-specific WebSocket in webSocketHandlerClientConnect()
         webSocketClient.connect(0L, message -> Platform.runLater(() -> {
             try {
                 JsonNode root = new com.fasterxml.jackson.databind.ObjectMapper().readTree(message);
@@ -199,12 +197,30 @@ public class DashboardController {
                 if ("AUCTION_ENDED".equals(type)) {
                     long auctionId = root.path("auctionId").asLong();
                     String winnerName = root.path("winnerName").asText();
+                    long winnerId = root.path("winnerId").asLong(-1L);
                     double amount = root.path("amount").asDouble();
+
                     String announcement = String.format(
                         "🏆 AUCTION ENDED: Auction #%d won by %s for ₹%.2f",
                         auctionId, winnerName, amount);
                     notifListView.getItems().add(0, announcement);
                     onRefreshAuctions(null);
+
+                    // Show payment popup if this buyer won, even if they weren't watching live
+                    boolean iWon = winnerId == currentUser.getId()
+                        || (currentUser.getEmail() != null
+                            && currentUser.getEmail().equalsIgnoreCase(winnerName));
+                    boolean alreadyHandled = handledEndedAuctions.contains(auctionId);
+
+                    if (iWon && !alreadyHandled && !paymentPopupOpen) {
+                        handledEndedAuctions.add(auctionId);
+                        openPaymentOptions(
+                            auctionId,
+                            root.path("sellerId").asLong(),
+                            root.path("title").asText(),
+                            amount
+                        );
+                    }
                 } else if ("GLOBAL_ANNOUNCEMENT".equals(type)) {
                     String msg = root.path("message").asText();
                     notifListView.getItems().add(0, msg);
@@ -217,7 +233,7 @@ public class DashboardController {
             }
         }));
     }
-
+    
     private void showGlobalAnnouncements() {
         new Thread(() -> {
             try {
