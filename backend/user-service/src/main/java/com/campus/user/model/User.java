@@ -75,7 +75,7 @@ public class User {
             this.role = Role.BUYER;
         }
         if (this.walletBalance == null) {
-            this.walletBalance = new BigDecimal("1000.00");
+            this.walletBalance = BigDecimal.ZERO;
         }
         if (this.totalSpent == null) {
             this.totalSpent = BigDecimal.ZERO;

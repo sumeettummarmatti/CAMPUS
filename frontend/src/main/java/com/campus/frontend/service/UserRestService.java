@@ -77,6 +77,8 @@ public class UserRestService {
                 JsonNode profile = mapper.readTree(resp.body());
                 user.setId(profile.path("id").asLong());
                 user.setFullName(profile.path("fullName").asText());
+                user.setVerified(profile.path("verified").asBoolean(false));
+                user.setRole(profile.path("role").asText(user.getRole()));
                 user.setWalletBalance(profile.path("walletBalance").asDouble(0.0));
                 user.setTotalSpent(profile.path("totalSpent").asDouble(0.0));
                 user.setTotalEarned(profile.path("totalEarned").asDouble(0.0));

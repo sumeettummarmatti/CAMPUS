@@ -93,10 +93,9 @@ public class UserTransactionService {
 
         user.setTotalSpent(spent);
         user.setTotalEarned(earned);
-        user.setWalletBalance(new BigDecimal("1000.00")
-                .add(earned)
-                .add(user.getTotalDeposited())
-                .subtract(spent));
+        user.setWalletBalance(earned
+            .add(user.getTotalDeposited())
+            .subtract(spent));
         userRepository.save(user);
     }
 

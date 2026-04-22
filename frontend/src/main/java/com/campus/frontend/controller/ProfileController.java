@@ -37,6 +37,8 @@ public class ProfileController {
     @FXML private TextField topUpAmountField;
     @FXML private Label actionStatusLabel;
     @FXML private TextField sellerTxIdField;
+    @FXML private Button requestSellerAccessBtn;
+    @FXML private TabPane profileTabPane;
 
     private PaymentRestService paymentRestService;
     private UserRestService userRestService;
@@ -52,6 +54,12 @@ public class ProfileController {
         userInfoLabel.setText("Email: " + currentUser.getEmail() + "  |  Role: " + currentUser.getRole());
         loadWalletModes();
         loadPaymentData();
+
+        // If the current user is a seller, default to the Sales tab
+        String role = currentUser.getRole() != null ? currentUser.getRole() : "";
+        if ("SELLER".equals(role) || "ADMIN".equals(role)) {
+            profileTabPane.getSelectionModel().select(1); // 0 = Purchases, 1 = Sales
+        }
     }
 
     private void loadPaymentData() {
@@ -82,11 +90,14 @@ public class ProfileController {
 
                 if (earnings.isArray()) {
                     for (JsonNode tx : earnings) {
-                        earnItems.add(String.format("[TX#%d] Auction #%d — ₹%.2f — %s",
+                        String txStatus = tx.path("status").asText();
+                        String shipHint = "IN_ESCROW".equals(txStatus) ? " ← COPY THIS TX# TO MARK SHIPPED" : "";
+                        earnItems.add(String.format("TX#%d | Auction #%d | ₹%.2f | %s%s",
                             tx.path("id").asLong(),
                             tx.path("auctionId").asLong(),
                             tx.path("amount").asDouble(),
-                            tx.path("status").asText()));
+                            txStatus,
+                            shipHint));
                     }
                 } else {
                     System.out.println("[Profile] Earnings was not an array: "
@@ -123,6 +134,13 @@ public class ProfileController {
                     }
 
                     applyWalletModes(currentUser.getEnabledPaymentModes());
+
+                    String role = latest.getRole() != null ? latest.getRole() : "";
+                    boolean alreadySeller = "SELLER".equals(role) || "ADMIN".equals(role) || latest.isVerified();
+                    if (requestSellerAccessBtn != null) {
+                        requestSellerAccessBtn.setVisible(!alreadySeller);
+                        requestSellerAccessBtn.setManaged(!alreadySeller);
+                    }
                 });
 
             } catch (Exception e) {

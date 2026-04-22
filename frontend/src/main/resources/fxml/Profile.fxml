@@ -51,7 +51,7 @@
                 style="-fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold;"/>
     </HBox>
 
-    <TabPane tabClosingPolicy="UNAVAILABLE">
+    <TabPane fx:id="profileTabPane" tabClosingPolicy="UNAVAILABLE">
 
         <Tab text="Purchases (Buying)">
             <VBox spacing="8">
@@ -90,8 +90,8 @@
         <Label text="Seller Access" style="-fx-font-weight: bold; -fx-font-size: 14;"/>
         <Label text="Want to list items for auction? Request seller access — an admin will review and approve your account."
             wrapText="true" style="-fx-text-fill: #7f8c8d; -fx-font-size: 12;"/>
-        <Button text="Request Seller Access" onAction="#onRequestSellerAccess"
-                style="-fx-background-color: #8e44ad; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button fx:id="requestSellerAccessBtn" text="Request Seller Access" onAction="#onRequestSellerAccess"
+            style="-fx-background-color: #8e44ad; -fx-text-fill: white; -fx-font-weight: bold;"/>
     </VBox>
     <Label fx:id="actionStatusLabel" wrapText="true"/>
 </VBox>

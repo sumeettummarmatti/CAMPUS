@@ -64,6 +64,13 @@ public class BidService {
                         throw new IllegalArgumentException("Bidding is only allowed on ACTIVE auctions. Current status: " + status);
                     }
                 }
+                if (auction.get("endTime") != null) {
+                    String endTimeStr = auction.get("endTime").toString();
+                    java.time.LocalDateTime endTime = java.time.LocalDateTime.parse(endTimeStr);
+                    if (java.time.LocalDateTime.now().isAfter(endTime)) {
+                        throw new IllegalArgumentException("This auction has already ended.");
+                    }
+                }
             }
         } catch (IllegalArgumentException e) {
             throw e; // rethrow the business validation exception

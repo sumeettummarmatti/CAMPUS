@@ -82,8 +82,8 @@ public class CampusApp extends Application {
             return;
         }
 
-        // Everyone else must be verified (admin-approved)
-        if (!user.isVerified()) {
+        // Only show pending screen if they've requested seller access but aren't approved yet
+        if ("SELLER".equals(user.getRole()) && !user.isVerified()) {
             loadPendingApprovalScreen();
             return;
         }
